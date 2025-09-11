@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from './screens/HomeScreen';
 import CropsScreen from './screens/CropsScreen';
 import ToolsNavigator from './navigation/ToolsNavigator';
-import ForumScreen from './screens/ForumScreen';
+import ForumNavigator from './navigation/ForumNavigator';
 import ProfileScreen from './screens/ProfileScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import AuthScreen from './screens/AuthScreen';
@@ -81,7 +81,7 @@ export default function App() {
         <Tab.Screen name="Home" component={HomeScreen} />
         <Tab.Screen name="Crops" component={CropsScreen} />
         <Tab.Screen name="Tools" component={ToolsNavigator} />
-        <Tab.Screen name="Forum" component={ForumScreen} />
+        <Tab.Screen name="Forum" component={ForumNavigator} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
       <StatusBar style="light" />
