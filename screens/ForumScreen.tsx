@@ -131,7 +131,7 @@ const ForumScreen = ({ navigation }: { navigation: any }) => {
   return (
     <View className="flex-1 bg-gray-900">
       {/* Header */}
-      <View className="pt-12 pb-4 px-4 bg-gray-800">
+      <View className="pt-20 pb-4 px-4 bg-gray-800">
         <View className="flex-row items-center justify-between mb-4">
           <Text className="text-2xl font-bold text-white">Community Forum</Text>
           <TouchableOpacity
