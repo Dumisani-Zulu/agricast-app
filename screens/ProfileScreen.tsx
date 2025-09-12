@@ -9,11 +9,13 @@ import {
   Alert 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProfileScreen = () => {
-  const [user] = useState({
-    name: 'John Farmer',
-    email: 'john.farmer@email.com',
+  const { user, logout } = useAuth();
+  const [userProfile] = useState({
+    name: user?.displayName || 'Farmer',
+    email: user?.email || 'No email',
     phone: '+260 97 123 4567',
     location: 'Lusaka, Zambia',
     joinDate: 'January 2024',
@@ -32,7 +34,17 @@ const ProfileScreen = () => {
       'Are you sure you want to logout?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: () => {} }
+        { 
+          text: 'Logout', 
+          style: 'destructive', 
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to logout. Please try again.');
+            }
+          }
+        }
       ]
     );
   };
@@ -98,11 +110,11 @@ const ProfileScreen = () => {
               </TouchableOpacity>
             </View>
             
-            <Text className="text-white text-2xl font-bold mt-4">{user.name}</Text>
-            <Text className="text-gray-400 text-base">{user.email}</Text>
+            <Text className="text-white text-2xl font-bold mt-4">{userProfile.name}</Text>
+            <Text className="text-gray-400 text-base">{userProfile.email}</Text>
             <View className="flex-row items-center mt-1">
               <Ionicons name="location-outline" size={14} color="#9CA3AF" />
-              <Text className="text-gray-400 text-lg ml-1">{user.location}</Text>
+              <Text className="text-gray-400 text-lg ml-1">{userProfile.location}</Text>
             </View>
           </View>
         </View>
@@ -116,16 +128,16 @@ const ProfileScreen = () => {
           <View className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/30">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-400">Farm Size</Text>
-              <Text className="text-white font-semibold">{user.farmSize}</Text>
+              <Text className="text-white font-semibold">{userProfile.farmSize}</Text>
             </View>
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-400">Experience</Text>
-              <Text className="text-white font-semibold">{user.experience}</Text>
+              <Text className="text-white font-semibold">{userProfile.experience}</Text>
             </View>
             <View className="mb-2">
               <Text className="text-gray-400 mb-2">Crop Types</Text>
               <View className="flex-row flex-wrap">
-                {user.cropTypes.map((crop, index) => (
+                {userProfile.cropTypes.map((crop, index) => (
                   <View key={index} className="bg-green-500/20 rounded-full px-3 py-1 mr-2 mb-2">
                     <Text className="text-green-300 text-sm">{crop}</Text>
                   </View>
@@ -134,7 +146,7 @@ const ProfileScreen = () => {
             </View>
             <View className="flex-row justify-between items-center border-t border-gray-700/50 pt-4">
               <Text className="text-gray-400">Member Since</Text>
-              <Text className="text-white font-semibold">{user.joinDate}</Text>
+              <Text className="text-white font-semibold">{userProfile.joinDate}</Text>
             </View>
           </View>
         </View>

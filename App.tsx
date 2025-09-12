@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { View, ActivityIndicator } from 'react-native';
 import HomeNavigator from './navigation/HomeNavigator';
 import CropsScreen from './screens/CropsScreen';
 import ToolsNavigator from './navigation/ToolsNavigator';
@@ -12,23 +13,30 @@ import ProfileScreen from './screens/ProfileScreen';
 import WelcomeScreen from './screens/WelcomeScreen';
 import AuthScreen from './screens/AuthScreen';
 import { StatusBar } from 'expo-status-bar';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 import './global.css';
 
 const Tab = createBottomTabNavigator();
 
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+const AppNavigator = () => {
+  const { user, loading } = useAuth();
   const [showWelcome, setShowWelcome] = useState(true);
 
   const handleGetStarted = () => {
     setShowWelcome(false);
   };
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-  };
+  // Show loading spinner while auth state is being determined
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center" style={{ backgroundColor: '#0f172a' }}>
+        <ActivityIndicator size="large" color="#10b981" />
+      </View>
+    );
+  }
 
+  // Show welcome screen first
   if (showWelcome) {
     return (
       <>
@@ -38,15 +46,17 @@ export default function App() {
     );
   }
 
-  if (!isAuthenticated) {
+  // Show auth screen if user is not authenticated
+  if (!user) {
     return (
       <>
-        <AuthScreen onLogin={handleLogin} />
+        <AuthScreen />
         <StatusBar style="light" />
       </>
     );
   }
 
+  // Show main app if user is authenticated
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -86,5 +96,13 @@ export default function App() {
       </Tab.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>
+  );
+};
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
   );
 }

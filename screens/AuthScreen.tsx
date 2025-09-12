@@ -1,19 +1,77 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 
-const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
+const AuthScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  const handleAuth = () => {
+  const { signIn, signUp, resetPassword } = useAuth();
+
+  const handleAuth = async () => {
     if (!email || !password || (!isLogin && !name)) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    // Simple auth simulation
-    onLogin();
+
+    if (!isLogin && password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (isLogin) {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password, name);
+      }
+    } catch (error: any) {
+      let errorMessage = 'An error occurred';
+      
+      // Handle specific Firebase error codes
+      if (error.message.includes('auth/user-not-found')) {
+        errorMessage = 'No account found with this email address';
+      } else if (error.message.includes('auth/wrong-password')) {
+        errorMessage = 'Incorrect password';
+      } else if (error.message.includes('auth/email-already-in-use')) {
+        errorMessage = 'An account with this email already exists';
+      } else if (error.message.includes('auth/invalid-email')) {
+        errorMessage = 'Please enter a valid email address';
+      } else if (error.message.includes('auth/weak-password')) {
+        errorMessage = 'Password is too weak';
+      } else {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Authentication Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address first');
+      return;
+    }
+
+    try {
+      await resetPassword(email);
+      Alert.alert(
+        'Password Reset', 
+        'A password reset email has been sent to your email address. Please check your inbox.'
+      );
+    } catch (error: any) {
+      let errorMessage = 'Failed to send reset email';
+      if (error.message.includes('auth/user-not-found')) {
+        errorMessage = 'No account found with this email address';
+      }
+      Alert.alert('Error', errorMessage);
+    }
   };
 
   return (
@@ -87,13 +145,35 @@ const AuthScreen = ({ onLogin }: { onLogin: () => void }) => {
           {/* Action Button */}
           <TouchableOpacity
             className="p-4 rounded-2xl mb-6 shadow-lg active:scale-95"
-            style={{ backgroundColor: '#16a34a' }}
+            style={{ backgroundColor: loading ? '#9CA3AF' : '#16a34a' }}
             onPress={handleAuth}
+            disabled={loading}
           >
-            <Text className="text-white text-center font-bold text-lg">
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </Text>
+            {loading ? (
+              <View className="flex-row items-center justify-center">
+                <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
+                <Text className="text-white text-center font-bold text-lg">
+                  {isLogin ? 'Signing In...' : 'Creating Account...'}
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-white text-center font-bold text-lg">
+                {isLogin ? 'Sign In' : 'Create Account'}
+              </Text>
+            )}
           </TouchableOpacity>
+
+          {/* Forgot Password - Only show for login */}
+          {isLogin && (
+            <TouchableOpacity
+              className="mb-4"
+              onPress={handleForgotPassword}
+            >
+              <Text className="text-green-400 text-center font-medium">
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
+          )}
           
           {/* Divider */}
           <View className="flex-row items-center mb-4">
