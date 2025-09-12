@@ -46,13 +46,18 @@ const getWeatherCondition = (temp: number, rainProb: number, isNightTime: boolea
   return 'Cold';
 };
 
-const formatDayName = (date: Date, index: number) => {
+const formatDayName = (date: Date) => {
   const today = new Date();
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   
-  // For the 7-day forecast, first entry should always be "Tomorrow"
-  if (index === 0) {
+  // Check if the date is today
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  }
+  
+  // Check if the date is tomorrow
+  if (date.toDateString() === tomorrow.toDateString()) {
     return 'Tomorrow';
   }
   
@@ -104,15 +109,14 @@ export const WeatherMainScreen: React.FC<Props> = ({ data, loading, error, locat
   const weatherIcon = getWeatherIcon(currentTemp, currentRain, isNightTime);
   const weatherCondition = getWeatherCondition(currentTemp, currentRain, isNightTime);
 
-  // Process daily data - start from TOMORROW for the 7-day forecast
+  // Process daily data - start from TODAY for the 7-day forecast
   const byDay: Record<string, DayData> = {};
-  const startOfTomorrow = new Date();
-  startOfTomorrow.setDate(startOfTomorrow.getDate() + 2);
-  startOfTomorrow.setHours(0, 0, 0, 0); // Start of tomorrow at midnight
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0); // Start of today at midnight
   
   data.hourly.time.forEach((t, i) => {
-    // Only include data from tomorrow onwards for the 7-day forecast
-    if (t >= startOfTomorrow) {
+    // Include data from today onwards
+    if (t >= startOfToday) {
       const key = t.toISOString().slice(0, 10);
       if (!byDay[key]) {
         byDay[key] = { 
@@ -133,7 +137,7 @@ export const WeatherMainScreen: React.FC<Props> = ({ data, loading, error, locat
   const dailyEntries = Object.entries(byDay).slice(0, 7);
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: '#1a1a1a' }}>
+    <View style={{ backgroundColor: '#1a1a1a' }}>
       {/* Current Weather Section */}
       <View className="items-center px-2 py-4">
         {/* Location Header */}
@@ -186,7 +190,7 @@ export const WeatherMainScreen: React.FC<Props> = ({ data, loading, error, locat
       {/* 7-Day Forecast Section */}
       <View className="mx-2 mb-8 bg-gray-800/40 rounded-xl border border-gray-700/30" >
         {/* 7-Day Forecast Header */}
-        <View className="px-4 py-5 border-b border-gray-700/50">
+        <View className="px-4 py-5">
           <View className="flex-row items-center justify-center">
             <View className="flex-row items-center ">
               <Text className="text-white text-2xl font-bold">7 days Weather Forecast</Text>
@@ -195,50 +199,56 @@ export const WeatherMainScreen: React.FC<Props> = ({ data, loading, error, locat
         </View>
 
         {/* 7-Day Forecast List */}
-        <View className="px-4 py-2">
-          {dailyEntries.map(([day, vals], index) => {
-            const avgTemp = vals.temps.reduce((a, b) => a + b, 0) / vals.temps.length;
-            const minTemp = Math.min(...vals.temps);
-            const maxTemp = Math.max(...vals.temps);
-            const maxRain = Math.max(...vals.rains);
-            const dayDate = new Date(day);
-            const isDayTime = true; // For daily forecast, assume daytime weather
-            const dayWeatherIcon = getWeatherIcon(avgTemp, maxRain, !isDayTime);
-            const dayCondition = getWeatherCondition(avgTemp, maxRain, !isDayTime);
-            const dayName = formatDayName(dayDate, index);
-            
-            return (
-              <View key={day} className="flex-row items-center justify-between py-4 border-b border-gray-700/30">
-                <Text className="text-white font-medium w-20">{dayName}</Text>
-                
-                <View className="flex-row items-center flex-1 ml-4">
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          className="px-4 py-2"
+          contentContainerStyle={{ paddingRight: 16 }}
+        >
+          <View className="flex-row space-x-4 gap-3">
+            {dailyEntries.map(([day, vals], index) => {
+              const avgTemp = vals.temps.reduce((a, b) => a + b, 0) / vals.temps.length;
+              const minTemp = Math.min(...vals.temps);
+              const maxTemp = Math.max(...vals.temps);
+              const maxRain = Math.max(...vals.rains);
+              const dayDate = new Date(day);
+              const isDayTime = true; // For daily forecast, assume daytime weather
+              const dayWeatherIcon = getWeatherIcon(avgTemp, maxRain, !isDayTime);
+              const dayCondition = getWeatherCondition(avgTemp, maxRain, !isDayTime);
+              const dayName = formatDayName(dayDate);
+              
+              return (
+                <View key={day} className="items-center py-4 px-3 min-w-[100px] bg-gray-700/20 rounded-lg border border-gray-600/20">
+                  <Text className="text-white font-medium text-sm mb-3">{dayName}</Text>
+                  
                   <Ionicons 
                     name={dayWeatherIcon} 
-                    size={24} 
+                    size={32} 
                     color={dayCondition.includes('Sunny') || dayCondition.includes('Clear') ? '#FFD700' : '#87CEEB'} 
+                    style={{ marginBottom: 8 }}
                   />
-                  <View className="ml-2">
-                    <Text className="text-gray-400 text-sm">{dayCondition}</Text>
-                    <View className="flex-row items-center mt-1">
-                      <Ionicons name="rainy-outline" size={12} color="#60A5FA" />
-                      <Text className="text-blue-300 text-xs ml-1">{Math.round(maxRain)}%</Text>
-                    </View>
+                  
+                  <Text className="text-gray-300 text-xs text-center mb-2">{dayCondition}</Text>
+                  
+                  <View className="items-center mb-2">
+                    <Text className="text-white font-semibold text-lg">
+                      {Math.round(maxTemp)}°
+                    </Text>
+                    <Text className="text-gray-400 text-sm">
+                      {Math.round(minTemp)}°
+                    </Text>
+                  </View>
+                  
+                  <View className="flex-row items-center">
+                    <Ionicons name="rainy-outline" size={12} color="#60A5FA" />
+                    <Text className="text-blue-300 text-xs ml-1">{Math.round(maxRain)}%</Text>
                   </View>
                 </View>
-                
-                <View className="flex-row items-center">
-                  <Text className="text-white font-medium text-right">
-                    +{Math.round(maxTemp)}° 
-                  </Text>
-                  <Text className="text-gray-400 text-right ml-2">
-                    {Math.round(minTemp)}°
-                  </Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </View>
   );
 };

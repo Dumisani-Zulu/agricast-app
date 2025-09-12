@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import HomeScreen from './screens/HomeScreen';
+import HomeNavigator from './navigation/HomeNavigator';
 import CropsScreen from './screens/CropsScreen';
 import ToolsNavigator from './navigation/ToolsNavigator';
 import ForumNavigator from './navigation/ForumNavigator';
@@ -78,7 +78,7 @@ export default function App() {
           },
         })}
       >
-        <Tab.Screen name="Home" component={HomeScreen} />
+        <Tab.Screen name="Home" component={HomeNavigator} />
         <Tab.Screen name="Crops" component={CropsScreen} />
         <Tab.Screen name="Tools" component={ToolsNavigator} />
         <Tab.Screen name="Forum" component={ForumNavigator} />
