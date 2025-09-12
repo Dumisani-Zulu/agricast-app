@@ -4,7 +4,7 @@ This document outlines the new profile-related screens that have been added to t
 
 ## 🆕 New Screens Added
 
-### 1. **Edit Profile Screen** (`screens/EditProfileScreen.tsx`)
+### 1. **Edit Profile Screen** (`screens/profile/EditProfileScreen.tsx`)
 **Features:**
 - ✅ Profile picture editing with camera icon
 - ✅ Personal Information section (Name, Email, Phone, Location)
@@ -15,7 +15,7 @@ This document outlines the new profile-related screens that have been added to t
 
 **Navigation:** ProfileScreen → "Edit Profile" → EditProfileScreen
 
-### 2. **Notifications Screen** (`screens/NotificationsScreen.tsx`)
+### 2. **Notifications Screen** (`screens/profile/NotificationsScreen.tsx`)
 **Features:**
 - ✅ Push notification settings
 - ✅ Weather alerts toggle
@@ -29,7 +29,7 @@ This document outlines the new profile-related screens that have been added to t
 
 **Navigation:** ProfileScreen → "Notifications" → NotificationsScreen
 
-### 3. **Privacy & Settings Screen** (`screens/PrivacySettingsScreen.tsx`)
+### 3. **Privacy & Settings Screen** (`screens/profile/PrivacySettingsScreen.tsx`)
 **Features:**
 - ✅ Privacy controls (Profile visibility, Location sharing)
 - ✅ Data collection preferences
@@ -42,7 +42,7 @@ This document outlines the new profile-related screens that have been added to t
 
 **Navigation:** ProfileScreen → "Privacy & Security" → PrivacySettingsScreen
 
-### 4. **Help & Support Screen** (`screens/HelpSupportScreen.tsx`)
+### 4. **Help & Support Screen** (`screens/profile/HelpSupportScreen.tsx`)
 **Features:**
 - ✅ Multiple contact options (Email, Phone, WhatsApp)
 - ✅ In-app message sending
@@ -59,11 +59,11 @@ This document outlines the new profile-related screens that have been added to t
 ```
 App.tsx
 ├── ProfileNavigator (navigation/ProfileNavigator.tsx)
-    ├── ProfileMain (screens/ProfileScreen.tsx)
-    ├── EditProfile (screens/EditProfileScreen.tsx)
-    ├── Notifications (screens/NotificationsScreen.tsx)
-    ├── PrivacySettings (screens/PrivacySettingsScreen.tsx)
-    └── HelpSupport (screens/HelpSupportScreen.tsx)
+    ├── ProfileMain (screens/profile/ProfileScreen.tsx)
+    ├── EditProfile (screens/profile/EditProfileScreen.tsx)
+    ├── Notifications (screens/profile/NotificationsScreen.tsx)
+    ├── PrivacySettings (screens/profile/PrivacySettingsScreen.tsx)
+    └── HelpSupport (screens/profile/HelpSupportScreen.tsx)
 ```
 
 ### Navigation Implementation:

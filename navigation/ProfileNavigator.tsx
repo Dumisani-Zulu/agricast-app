@@ -1,10 +1,10 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
-import ProfileScreen from '../screens/ProfileScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import PrivacySettingsScreen from '../screens/PrivacySettingsScreen';
-import HelpSupportScreen from '../screens/HelpSupportScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
+import EditProfileScreen from '../screens/profile/EditProfileScreen';
+import NotificationsScreen from '../screens/profile/NotificationsScreen';
+import PrivacySettingsScreen from '../screens/profile/PrivacySettingsScreen';
+import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 
 const Stack = createStackNavigator();
 
