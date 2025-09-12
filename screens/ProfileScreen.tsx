@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
-const ProfileScreen = () => {
+const ProfileScreen = ({ navigation }: { navigation?: any }) => {
   const { user, logout } = useAuth();
   const [userProfile] = useState({
     name: user?.displayName || 'Farmer',
@@ -25,7 +25,11 @@ const ProfileScreen = () => {
   });
 
   const handleEditProfile = () => {
-    Alert.alert('Edit Profile', 'Profile editing functionality coming soon!');
+    if (navigation) {
+      navigation.navigate('EditProfile');
+    } else {
+      Alert.alert('Edit Profile', 'Profile editing functionality coming soon!');
+    }
   };
 
   const handleLogout = () => {
@@ -40,7 +44,7 @@ const ProfileScreen = () => {
           onPress: async () => {
             try {
               await logout();
-            } catch (error) {
+            } catch {
               Alert.alert('Error', 'Failed to logout. Please try again.');
             }
           }
@@ -166,21 +170,39 @@ const ProfileScreen = () => {
             icon="notifications-outline" 
             title="Notifications" 
             subtitle="Manage your notification preferences"
-            onPress={() => Alert.alert('Notifications', 'Coming soon!')}
+            onPress={() => {
+              if (navigation) {
+                navigation.navigate('Notifications');
+              } else {
+                Alert.alert('Notifications', 'Coming soon!');
+              }
+            }}
           />
           
           <MenuButton 
             icon="shield-checkmark-outline" 
             title="Privacy & Security" 
             subtitle="Control your privacy settings"
-            onPress={() => Alert.alert('Privacy', 'Coming soon!')}
+            onPress={() => {
+              if (navigation) {
+                navigation.navigate('PrivacySettings');
+              } else {
+                Alert.alert('Privacy', 'Coming soon!');
+              }
+            }}
           />
           
           <MenuButton 
             icon="help-circle-outline" 
             title="Help & Support" 
             subtitle="Get help or contact support"
-            onPress={() => Alert.alert('Help', 'Coming soon!')}
+            onPress={() => {
+              if (navigation) {
+                navigation.navigate('HelpSupport');
+              } else {
+                Alert.alert('Help', 'Coming soon!');
+              }
+            }}
           />
           
           <MenuButton 

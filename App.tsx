@@ -9,7 +9,7 @@ import HomeNavigator from './navigation/HomeNavigator';
 import CropsScreen from './screens/CropsScreen';
 import ToolsNavigator from './navigation/ToolsNavigator';
 import ForumNavigator from './navigation/ForumNavigator';
-import ProfileScreen from './screens/ProfileScreen';
+import ProfileNavigator from './navigation/ProfileNavigator';
 import WelcomeScreen from './screens/WelcomeScreen';
 import AuthScreen from './screens/AuthScreen';
 import { StatusBar } from 'expo-status-bar';
@@ -92,7 +92,7 @@ const AppNavigator = () => {
         <Tab.Screen name="Crops" component={CropsScreen} />
         <Tab.Screen name="Tools" component={ToolsNavigator} />
         <Tab.Screen name="Forum" component={ForumNavigator} />
-        <Tab.Screen name="Profile" component={ProfileScreen} />
+        <Tab.Screen name="Profile" component={ProfileNavigator} />
       </Tab.Navigator>
       <StatusBar style="light" />
     </NavigationContainer>
