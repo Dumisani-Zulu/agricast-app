@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ForumScreen from '../screens/ForumScreen';
 import PostDetailScreen from '../components/forum/PostDetailScreen';

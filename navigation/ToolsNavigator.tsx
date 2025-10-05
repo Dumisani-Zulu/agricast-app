@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ToolsScreen from '../screens/ToolsScreen';
 import CropDiseaseIdentifier from '../components/tools/CropDiseaseIdentifier';

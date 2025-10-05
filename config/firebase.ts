@@ -1,7 +1,8 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
-import { initializeAuth, getAuth } from "firebase/auth";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAuth } from "firebase/auth";
+// Note: @react-native-async-storage/async-storage must be installed for persistence
+// Firebase will automatically detect and use it in React Native environments
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -27,21 +28,11 @@ console.log('  App ID exists:', !!firebaseConfig.appId);
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 console.log('✅ Firebase App initialized successfully');
 
-// Initialize Firebase Auth with AsyncStorage persistence for React Native
-let auth: any;
-try {
-  // For React Native, Firebase v12+ should automatically use AsyncStorage
-  // if it's installed, but we can also explicitly initialize it
-  auth = initializeAuth(app, {
-    // @ts-ignore - Persistence configuration
-    persistence: AsyncStorage
-  });
-  console.log('✅ Firebase Auth initialized with AsyncStorage');
-} catch {
-  // If already initialized, get the existing instance
-  auth = getAuth(app);
-  console.log('✅ Firebase Auth instance retrieved');
-}
+// Initialize Firebase Auth
+// Note: AsyncStorage persistence is automatically detected and used in React Native
+// when @react-native-async-storage/async-storage is installed
+const auth = getAuth(app);
+console.log('✅ Firebase Auth initialized');
 
 export { auth };
 export default app;
