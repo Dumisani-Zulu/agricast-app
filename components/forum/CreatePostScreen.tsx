@@ -1,17 +1,26 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { createPost } from '../../services/forumService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const categories = ['Fertilizers', 'Pest Control', 'Soil Health', 'Crop Management', 'Seeds', 'Weather'];
 const topics = ['Tomatoes', 'Organic Farming', 'Testing', 'Planning', 'Irrigation', 'Harvesting'];
 
 const CreatePostScreen = ({ navigation }: { navigation: any }) => {
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to create a post');
+      return;
+    }
+
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a title');
       return;
@@ -29,12 +38,31 @@ const CreatePostScreen = ({ navigation }: { navigation: any }) => {
       return;
     }
 
-    // In a real app, this would send the data to a backend
-    Alert.alert(
-      'Success', 
-      'Your post has been submitted!',
-      [{ text: 'OK', onPress: () => navigation.goBack() }]
-    );
+    setSubmitting(true);
+
+    try {
+      const authorName = user.displayName || user.email?.split('@')[0] || 'Anonymous';
+      
+      await createPost(
+        title.trim(),
+        content.trim(),
+        selectedCategory,
+        selectedTopic,
+        user.uid,
+        authorName
+      );
+
+      Alert.alert(
+        'Success', 
+        'Your post has been submitted!',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error creating post:', error);
+      Alert.alert('Error', 'Failed to create post. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -123,17 +151,28 @@ const CreatePostScreen = ({ navigation }: { navigation: any }) => {
 
         {/* Submit Button */}
         <TouchableOpacity
-          className="bg-green-600 rounded-lg p-4 flex-row items-center justify-center"
+          className={`rounded-lg p-4 flex-row items-center justify-center ${submitting ? 'bg-gray-600' : 'bg-green-600'}`}
           onPress={handleSubmit}
+          disabled={submitting}
         >
-          <Ionicons name="send" size={20} color="white" />
-          <Text className="text-white font-semibold text-lg ml-2">Post Question</Text>
+          {submitting ? (
+            <>
+              <ActivityIndicator size="small" color="white" />
+              <Text className="text-white font-semibold text-lg ml-2">Posting...</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="send" size={20} color="white" />
+              <Text className="text-white font-semibold text-lg ml-2">Post Question</Text>
+            </>
+          )}
         </TouchableOpacity>
 
         {/* Cancel Button */}
         <TouchableOpacity
           className="bg-gray-700 rounded-lg p-4 flex-row items-center justify-center mt-3"
           onPress={() => navigation.goBack()}
+          disabled={submitting}
         >
           <Ionicons name="close" size={20} color="#9ca3af" />
           <Text className="text-gray-300 font-semibold text-lg ml-2">Cancel</Text>

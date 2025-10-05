@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 // Note: @react-native-async-storage/async-storage must be installed for persistence
 // Firebase will automatically detect and use it in React Native environments
 
@@ -34,5 +35,9 @@ console.log('✅ Firebase App initialized successfully');
 const auth = getAuth(app);
 console.log('✅ Firebase Auth initialized');
 
-export { auth };
+// Initialize Firestore
+const db = getFirestore(app);
+console.log('✅ Firestore initialized');
+
+export { auth, db };
 export default app;

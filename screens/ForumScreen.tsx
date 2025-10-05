@@ -1,132 +1,130 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, FlatList, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
-// Mock data for posts
-const mockPosts = [
-  {
-    id: '1',
-    title: 'Best fertilizer for tomatoes?',
-    content: 'I\'m having issues with my tomato plants. What fertilizer do you recommend for better yield?',
-    author: 'John Farmer',
-    category: 'Fertilizers',
-    topic: 'Tomatoes',
-    createdAt: '2 hours ago',
-    likes: 12,
-    replies: 5,
-    isLiked: false,
-  },
-  {
-    id: '2',
-    title: 'Pest control for aphids',
-    content: 'My crops are being attacked by aphids. Looking for organic solutions.',
-    author: 'Sarah Green',
-    category: 'Pest Control',
-    topic: 'Organic Farming',
-    createdAt: '4 hours ago',
-    likes: 8,
-    replies: 3,
-    isLiked: true,
-  },
-  {
-    id: '3',
-    title: 'Soil pH testing methods',
-    content: 'What are the most accurate ways to test soil pH at home?',
-    author: 'Mike Davis',
-    category: 'Soil Health',
-    topic: 'Testing',
-    createdAt: '1 day ago',
-    likes: 15,
-    replies: 7,
-    isLiked: false,
-  },
-  {
-    id: '4',
-    title: 'Crop rotation schedule advice',
-    content: 'Need help planning my crop rotation for the next season. Any suggestions?',
-    author: 'Lisa Johnson',
-    category: 'Crop Management',
-    topic: 'Planning',
-    createdAt: '2 days ago',
-    likes: 20,
-    replies: 12,
-    isLiked: true,
-  },
-];
+import { subscribeToPosts, togglePostLike } from '../services/forumService';
+import { Post } from '../types/forum';
+import { useAuth } from '../contexts/AuthContext';
 
 const categories = ['All', 'Fertilizers', 'Pest Control', 'Soil Health', 'Crop Management', 'Seeds', 'Weather'];
 const topics = ['All', 'Tomatoes', 'Organic Farming', 'Testing', 'Planning', 'Irrigation', 'Harvesting'];
 
 const ForumScreen = ({ navigation }: { navigation: any }) => {
-  const [posts, setPosts] = useState(mockPosts);
+  const { user } = useAuth();
+  const [posts, setPosts] = useState<Post[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedTopic, setSelectedTopic] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
 
+  // Subscribe to posts with real-time updates
+  useEffect(() => {
+    console.log('📡 Subscribing to posts...');
+    setLoading(true);
+
+    const unsubscribe = subscribeToPosts(
+      (fetchedPosts) => {
+        console.log('✅ Received posts:', fetchedPosts.length);
+        setPosts(fetchedPosts);
+        setLoading(false);
+      },
+      selectedCategory,
+      selectedTopic
+    );
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🔌 Unsubscribing from posts');
+      unsubscribe();
+    };
+  }, [selectedCategory, selectedTopic]);
+
+  // Client-side search filtering
   const filteredPosts = posts.filter(post => {
-    const matchesCategory = selectedCategory === 'All' || post.category === selectedCategory;
-    const matchesTopic = selectedTopic === 'All' || post.topic === selectedTopic;
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         post.content.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesCategory && matchesTopic && matchesSearch;
+    if (!searchQuery.trim()) return true;
+    const lowerQuery = searchQuery.toLowerCase();
+    return post.title.toLowerCase().includes(lowerQuery) ||
+           post.content.toLowerCase().includes(lowerQuery);
   });
 
-  const handleLike = (postId: string) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-        : post
-    ));
+  const handleLike = async (postId: string) => {
+    if (!user) {
+      console.warn('User must be logged in to like posts');
+      return;
+    }
+
+    try {
+      await togglePostLike(postId, user.uid);
+    } catch (error) {
+      console.error('Error liking post:', error);
+    }
   };
 
-  const renderPost = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      className="bg-gray-800 rounded-xl p-4 mb-4 mx-4"
-      onPress={() => navigation.navigate('PostDetail', { post: item })}
-    >
-      <View className="flex-row items-start justify-between mb-2">
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-white mb-1">{item.title}</Text>
-          <Text className="text-gray-300 text-sm">by {item.author} • {item.createdAt}</Text>
-        </View>
-      </View>
-      
-      <View className="flex-row mb-3">
-        <View className="bg-green-600 rounded-full px-3 py-1 mr-2">
-          <Text className="text-white text-xs font-medium">{item.category}</Text>
-        </View>
-        <View className="bg-blue-600 rounded-full px-3 py-1">
-          <Text className="text-white text-xs font-medium">{item.topic}</Text>
-        </View>
-      </View>
-      
-      <Text className="text-gray-300 mb-3" numberOfLines={2}>{item.content}</Text>
-      
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <TouchableOpacity 
-            className="flex-row items-center mr-4"
-            onPress={() => handleLike(item.id)}
-          >
-            <Ionicons 
-              name={item.isLiked ? "heart" : "heart-outline"} 
-              size={20} 
-              color={item.isLiked ? "#ef4444" : "#9ca3af"} 
-            />
-            <Text className="text-gray-400 ml-1">{item.likes}</Text>
-          </TouchableOpacity>
-          
-          <View className="flex-row items-center">
-            <MaterialCommunityIcons name="comment-outline" size={20} color="#9ca3af" />
-            <Text className="text-gray-400 ml-1">{item.replies}</Text>
+  // Format date for display
+  const formatDate = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
+
+  const renderPost = ({ item }: { item: Post }) => {
+    const isLiked = user ? item.likes.includes(user.uid) : false;
+
+    return (
+      <TouchableOpacity
+        className="bg-gray-800 rounded-xl p-4 mb-4 mx-4"
+        onPress={() => navigation.navigate('PostDetail', { post: item })}
+      >
+        <View className="flex-row items-start justify-between mb-2">
+          <View className="flex-1">
+            <Text className="text-lg font-semibold text-white mb-1">{item.title}</Text>
+            <Text className="text-gray-300 text-sm">by {item.authorName} • {formatDate(item.createdAt)}</Text>
           </View>
         </View>
         
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-      </View>
-    </TouchableOpacity>
-  );
+        <View className="flex-row mb-3">
+          <View className="bg-green-600 rounded-full px-3 py-1 mr-2">
+            <Text className="text-white text-xs font-medium">{item.category}</Text>
+          </View>
+          <View className="bg-blue-600 rounded-full px-3 py-1">
+            <Text className="text-white text-xs font-medium">{item.topic}</Text>
+          </View>
+        </View>
+        
+        <Text className="text-gray-300 mb-3" numberOfLines={2}>{item.content}</Text>
+        
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <TouchableOpacity 
+              className="flex-row items-center mr-4"
+              onPress={() => handleLike(item.id)}
+            >
+              <Ionicons 
+                name={isLiked ? "heart" : "heart-outline"} 
+                size={20} 
+                color={isLiked ? "#ef4444" : "#9ca3af"} 
+              />
+              <Text className="text-gray-400 ml-1">{item.likeCount}</Text>
+            </TouchableOpacity>
+            
+            <View className="flex-row items-center">
+              <MaterialCommunityIcons name="comment-outline" size={20} color="#9ca3af" />
+              <Text className="text-gray-400 ml-1">{item.replyCount}</Text>
+            </View>
+          </View>
+          
+          <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View className="flex-1 bg-gray-900">
@@ -193,13 +191,28 @@ const ForumScreen = ({ navigation }: { navigation: any }) => {
       </View>
 
       {/* Posts List */}
-      <FlatList
-        data={filteredPosts}
-        renderItem={renderPost}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#16a34a" />
+          <Text className="text-gray-400 mt-4">Loading discussions...</Text>
+        </View>
+      ) : filteredPosts.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Ionicons name="chatbubbles-outline" size={64} color="#4b5563" />
+          <Text className="text-white text-xl font-semibold mt-4">No discussions yet</Text>
+          <Text className="text-gray-400 text-center mt-2">
+            {searchQuery ? 'No posts match your search.' : 'Be the first to start a discussion!'}
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPosts}
+          renderItem={renderPost}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };

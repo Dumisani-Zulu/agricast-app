@@ -1,73 +1,125 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-
-// Mock replies data
-const mockReplies = [
-  {
-    id: '1',
-    content: 'I recommend using organic compost mixed with balanced NPK fertilizer. Works great for my tomatoes!',
-    author: 'Tom Gardener',
-    createdAt: '1 hour ago',
-    likes: 5,
-    isLiked: false,
-  },
-  {
-    id: '2',
-    content: 'Fish emulsion is also excellent for tomatoes. Apply every 2 weeks during growing season.',
-    author: 'Maria Santos',
-    createdAt: '30 minutes ago',
-    likes: 3,
-    isLiked: true,
-  },
-  {
-    id: '3',
-    content: 'Don\'t forget to check your soil pH first. Tomatoes prefer slightly acidic soil (6.0-6.8).',
-    author: 'Dr. Plant',
-    createdAt: '15 minutes ago',
-    likes: 8,
-    isLiked: false,
-  },
-];
+import { subscribeToPost, subscribeToReplies, createReply, togglePostLike, toggleReplyLike } from '../../services/forumService';
+import { Post, Reply } from '../../types/forum';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PostDetailScreen = ({ route }: { route: any }) => {
-  const { post } = route.params;
-  const [replies, setReplies] = useState(mockReplies);
+  const { post: initialPost } = route.params;
+  const { user } = useAuth();
+  const [post, setPost] = useState<Post>(initialPost);
+  const [replies, setReplies] = useState<Reply[]>([]);
   const [newReply, setNewReply] = useState('');
-  const [postLiked, setPostLiked] = useState(post.isLiked);
-  const [postLikes, setPostLikes] = useState(post.likes);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handlePostLike = () => {
-    setPostLiked(!postLiked);
-    setPostLikes(postLiked ? postLikes - 1 : postLikes + 1);
+  // Subscribe to post updates
+  useEffect(() => {
+    console.log('📡 Subscribing to post:', post.id);
+    const unsubscribe = subscribeToPost(post.id, (updatedPost) => {
+      if (updatedPost) {
+        setPost(updatedPost);
+      }
+    });
+
+    return () => {
+      console.log('🔌 Unsubscribing from post');
+      unsubscribe();
+    };
+  }, [post.id]);
+
+  // Subscribe to replies
+  useEffect(() => {
+    console.log('📡 Subscribing to replies for post:', post.id);
+    setLoading(true);
+
+    const unsubscribe = subscribeToReplies(post.id, (fetchedReplies) => {
+      console.log('✅ Received replies:', fetchedReplies.length);
+      setReplies(fetchedReplies);
+      setLoading(false);
+    });
+
+    return () => {
+      console.log('🔌 Unsubscribing from replies');
+      unsubscribe();
+    };
+  }, [post.id]);
+
+  const handlePostLike = async () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to like posts');
+      return;
+    }
+
+    try {
+      await togglePostLike(post.id, user.uid);
+    } catch (error) {
+      console.error('Error liking post:', error);
+      Alert.alert('Error', 'Failed to like post');
+    }
   };
 
-  const handleReplyLike = (replyId: string) => {
-    setReplies(replies.map(reply => 
-      reply.id === replyId 
-        ? { ...reply, isLiked: !reply.isLiked, likes: reply.isLiked ? reply.likes - 1 : reply.likes + 1 }
-        : reply
-    ));
+  const handleReplyLike = async (replyId: string) => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to like replies');
+      return;
+    }
+
+    try {
+      await toggleReplyLike(replyId, user.uid);
+    } catch (error) {
+      console.error('Error liking reply:', error);
+      Alert.alert('Error', 'Failed to like reply');
+    }
   };
 
-  const handleSubmitReply = () => {
+  const handleSubmitReply = async () => {
+    if (!user) {
+      Alert.alert('Login Required', 'Please log in to reply');
+      return;
+    }
+
     if (newReply.trim() === '') {
       Alert.alert('Error', 'Please enter a reply');
       return;
     }
 
-    const newReplyObj = {
-      id: Date.now().toString(),
-      content: newReply.trim(),
-      author: 'Current User', // In a real app, this would come from auth
-      createdAt: 'Just now',
-      likes: 0,
-      isLiked: false,
-    };
+    setSubmitting(true);
 
-    setReplies([...replies, newReplyObj]);
-    setNewReply('');
-    Alert.alert('Success', 'Reply posted successfully!');
+    try {
+      const authorName = user.displayName || user.email?.split('@')[0] || 'Anonymous';
+      
+      await createReply(
+        post.id,
+        newReply.trim(),
+        user.uid,
+        authorName
+      );
+
+      setNewReply('');
+      Alert.alert('Success', 'Reply posted successfully!');
+    } catch (error) {
+      console.error('Error creating reply:', error);
+      Alert.alert('Error', 'Failed to post reply. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (date: Date): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
   };
 
   return (
@@ -78,7 +130,7 @@ const PostDetailScreen = ({ route }: { route: any }) => {
           <View className="flex-row items-start justify-between mb-3">
             <View className="flex-1">
               <Text className="text-xl font-bold text-white mb-2">{post.title}</Text>
-              <Text className="text-gray-300 text-sm">by {post.author} • {post.createdAt}</Text>
+              <Text className="text-gray-300 text-sm">by {post.authorName} • {formatDate(post.createdAt)}</Text>
             </View>
           </View>
           
@@ -99,16 +151,16 @@ const PostDetailScreen = ({ route }: { route: any }) => {
               onPress={handlePostLike}
             >
               <Ionicons 
-                name={postLiked ? "heart" : "heart-outline"} 
+                name={user && post.likes.includes(user.uid) ? "heart" : "heart-outline"} 
                 size={24} 
-                color={postLiked ? "#ef4444" : "#9ca3af"} 
+                color={user && post.likes.includes(user.uid) ? "#ef4444" : "#9ca3af"} 
               />
-              <Text className="text-gray-400 ml-2 text-base">{postLikes} likes</Text>
+              <Text className="text-gray-400 ml-2 text-base">{post.likeCount} likes</Text>
             </TouchableOpacity>
             
             <View className="flex-row items-center">
               <MaterialCommunityIcons name="comment-outline" size={24} color="#9ca3af" />
-              <Text className="text-gray-400 ml-2 text-base">{replies.length} replies</Text>
+              <Text className="text-gray-400 ml-2 text-base">{post.replyCount} replies</Text>
             </View>
           </View>
         </View>
@@ -117,31 +169,47 @@ const PostDetailScreen = ({ route }: { route: any }) => {
         <View className="mx-4 mb-4">
           <Text className="text-white font-bold text-lg mb-3">Replies ({replies.length})</Text>
           
-          {replies.map((reply) => (
-            <View key={reply.id} className="bg-gray-800 p-4 mb-3 rounded-xl ml-4">
-              <View className="flex-row items-start justify-between mb-2">
-                <View className="flex-1">
-                  <Text className="text-gray-300 text-sm">{reply.author} • {reply.createdAt}</Text>
-                </View>
-              </View>
-              
-              <Text className="text-gray-200 text-base leading-6 mb-3">{reply.content}</Text>
-              
-              <View className="flex-row items-center">
-                <TouchableOpacity 
-                  className="flex-row items-center"
-                  onPress={() => handleReplyLike(reply.id)}
-                >
-                  <Ionicons 
-                    name={reply.isLiked ? "heart" : "heart-outline"} 
-                    size={20} 
-                    color={reply.isLiked ? "#ef4444" : "#9ca3af"} 
-                  />
-                  <Text className="text-gray-400 ml-1">{reply.likes}</Text>
-                </TouchableOpacity>
-              </View>
+          {loading ? (
+            <View className="items-center py-8">
+              <ActivityIndicator size="large" color="#16a34a" />
+              <Text className="text-gray-400 mt-2">Loading replies...</Text>
             </View>
-          ))}
+          ) : replies.length === 0 ? (
+            <View className="bg-gray-800 p-8 rounded-xl items-center">
+              <MaterialCommunityIcons name="comment-outline" size={48} color="#4b5563" />
+              <Text className="text-gray-400 mt-3 text-center">No replies yet. Be the first to reply!</Text>
+            </View>
+          ) : (
+            replies.map((reply) => {
+              const isLiked = user ? reply.likes.includes(user.uid) : false;
+              
+              return (
+                <View key={reply.id} className="bg-gray-800 p-4 mb-3 rounded-xl ml-4">
+                  <View className="flex-row items-start justify-between mb-2">
+                    <View className="flex-1">
+                      <Text className="text-gray-300 text-sm">{reply.authorName} • {formatDate(reply.createdAt)}</Text>
+                    </View>
+                  </View>
+                  
+                  <Text className="text-gray-200 text-base leading-6 mb-3">{reply.content}</Text>
+                  
+                  <View className="flex-row items-center">
+                    <TouchableOpacity 
+                      className="flex-row items-center"
+                      onPress={() => handleReplyLike(reply.id)}
+                    >
+                      <Ionicons 
+                        name={isLiked ? "heart" : "heart-outline"} 
+                        size={20} 
+                        color={isLiked ? "#ef4444" : "#9ca3af"} 
+                      />
+                      <Text className="text-gray-400 ml-1">{reply.likeCount}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          )}
         </View>
       </ScrollView>
 
@@ -157,13 +225,19 @@ const PostDetailScreen = ({ route }: { route: any }) => {
               onChangeText={setNewReply}
               multiline
               textAlignVertical="top"
+              editable={!submitting}
             />
           </View>
           <TouchableOpacity
-            className="bg-green-600 rounded-lg p-3"
+            className={`rounded-lg p-3 ${submitting ? 'bg-gray-600' : 'bg-green-600'}`}
             onPress={handleSubmitReply}
+            disabled={submitting}
           >
-            <Ionicons name="send" size={20} color="white" />
+            {submitting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Ionicons name="send" size={20} color="white" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
