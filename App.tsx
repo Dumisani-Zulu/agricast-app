@@ -1,10 +1,10 @@
 
-import 'react-native-gesture-handler';
 import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { View, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HomeNavigator from './navigation/HomeNavigator';
 import CropsScreen from './screens/CropsScreen';
 import ToolsNavigator from './navigation/ToolsNavigator';
@@ -101,8 +101,10 @@ const AppNavigator = () => {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppNavigator />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <AppNavigator />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

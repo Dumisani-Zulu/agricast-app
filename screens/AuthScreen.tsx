@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 
 const AuthScreen = () => {
@@ -8,17 +9,41 @@ const AuthScreen = () => {
   const [name, setName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { signIn, signUp, resetPassword } = useAuth();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 6;
+  };
+
   const handleAuth = async () => {
+    // Basic validation
     if (!email || !password || (!isLogin && !name)) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    if (!isLogin && password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long');
+    // Email validation
+    if (!validateEmail(email)) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    // Name validation for sign up
+    if (!isLogin && name.trim().length < 2) {
+      Alert.alert('Invalid Name', 'Please enter your full name (at least 2 characters)');
+      return;
+    }
+
+    // Password validation
+    if (!validatePassword(password)) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -26,8 +51,14 @@ const AuthScreen = () => {
     try {
       if (isLogin) {
         await signIn(email, password);
+        Alert.alert('Success', 'Welcome back!');
       } else {
-        await signUp(email, password, name);
+        await signUp(email, password, name.trim());
+        Alert.alert(
+          'Account Created!', 
+          'Your account has been created successfully. A verification email has been sent to your email address.',
+          [{ text: 'OK', style: 'default' }]
+        );
       }
     } catch (error: any) {
       let errorMessage = 'An error occurred';
@@ -42,7 +73,13 @@ const AuthScreen = () => {
       } else if (error.message.includes('auth/invalid-email')) {
         errorMessage = 'Please enter a valid email address';
       } else if (error.message.includes('auth/weak-password')) {
-        errorMessage = 'Password is too weak';
+        errorMessage = 'Password is too weak. Please use at least 6 characters';
+      } else if (error.message.includes('auth/invalid-credential')) {
+        errorMessage = 'Invalid email or password. Please check your credentials';
+      } else if (error.message.includes('auth/too-many-requests')) {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      } else if (error.message.includes('auth/network-request-failed')) {
+        errorMessage = 'Network error. Please check your internet connection';
       } else {
         errorMessage = error.message;
       }
@@ -75,12 +112,17 @@ const AuthScreen = () => {
   };
 
   return (
-    <ScrollView className="flex-1" style={{ backgroundColor: '#0f172a' }}>
-      <View className="flex-1 justify-center px-4 py-8 min-h-screen">
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1"
+      style={{ backgroundColor: '#0f172a' }}
+    >
+      <ScrollView className="flex-1" style={{ backgroundColor: '#0f172a' }}>
+        <View className="flex-1 justify-center px-4 py-8 min-h-screen">
         {/* Header */}
         <View className="items-center mb-4">
           <View className="w-20 h-20 rounded-2xl items-center justify-center mb-16 shadow-lg">
-            <Image source={require('../assets/agricast.png')} className="w-64 h-64" />
+            <Image source={require('../assets/farmer.png')} className="w-64 h-64" />
           </View>
           
           {/* <Text className="text-3xl font-black text-white text-center mb-2">
@@ -123,6 +165,8 @@ const AuthScreen = () => {
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
               />
             </View>
           </View>
@@ -132,14 +176,29 @@ const AuthScreen = () => {
             <Text className="text-gray-300 text-sm font-medium mb-2 ml-1">Password</Text>
             <View className="relative">
               <TextInput
-                className="bg-gray-700/70 text-white p-4 rounded-2xl border border-gray-600/50 text-base"
+                className="bg-gray-700/70 text-white p-4 rounded-2xl border border-gray-600/50 text-base pr-12"
                 placeholder="Enter your password"
                 placeholderTextColor="#9CA3AF"
                 value={password}
                 onChangeText={setPassword}
-                secureTextEntry
+                secureTextEntry={!showPassword}
               />
+              <TouchableOpacity
+                className="absolute right-4 top-4"
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={24} 
+                  color="#9CA3AF" 
+                />
+              </TouchableOpacity>
             </View>
+            {!isLogin && (
+              <Text className="text-gray-400 text-xs mt-2 ml-1">
+                Password must be at least 6 characters long
+              </Text>
+            )}
           </View>
           
           {/* Action Button */}
@@ -199,6 +258,7 @@ const AuthScreen = () => {
         </Text>
       </View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 

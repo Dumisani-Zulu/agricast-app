@@ -1,12 +1,12 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ToolsScreen from '../screens/ToolsScreen';
 import CropDiseaseIdentifier from '../components/tools/CropDiseaseIdentifier';
 import PestIdentifier from '../components/tools/PestIdentifier';
 import SoilHealthChecker from '../components/tools/SoilHealthChecker';
 import MarketPrices from '../components/tools/MarketPrices';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 const ToolsNavigator = () => {
   return (

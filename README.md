@@ -19,6 +19,15 @@ As climate change exacerbates rainfall variability in Zambia, where over 60% of 
 
 ## 📱 Features
 
+### 🔐 **Authentication & User Management**
+- **Firebase Authentication** with email/password
+- **Secure user sign up** with email verification
+- **Password reset** functionality via email
+- **Profile management** with display name and photo
+- **Session persistence** across app restarts
+- **Password security** with validation and visibility toggle
+- **User-friendly error handling** with translated Firebase errors
+
 ### 🏠 **Home Screen (Weather Dashboard)**
 - **Real-time weather data** using OpenMeteo API
 - **Location-based weather** with automatic geolocation
@@ -193,14 +202,31 @@ This application is based on peer-reviewed research focusing on:
    npm install -g @expo/cli
    ```
 
-4. **Start the development server:**
+4. **Configure Firebase Authentication:**
+   
+   Create a `.env` file in the root directory with your Firebase credentials:
+   ```env
+   EXPO_PUBLIC_FIREBASE_API_KEY="your-api-key"
+   EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+   EXPO_PUBLIC_FIREBASE_PROJECT_ID="your-project-id"
+   EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET="your-project.firebasestorage.app"
+   EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
+   EXPO_PUBLIC_FIREBASE_APP_ID="your-app-id"
+   ```
+   
+   **📖 For detailed Firebase setup instructions, see:**
+   - `FIREBASE_CONSOLE_SETUP.md` - How to configure Firebase Console
+   - `AUTH_IMPLEMENTATION.md` - Authentication implementation details
+   - `FIREBASE_SETUP.md` - Additional Firebase configuration
+
+5. **Start the development server:**
    ```bash
    npm start
    # or
    expo start
    ```
 
-5. **Run on specific platforms:**
+6. **Run on specific platforms:**
    ```bash
    # iOS Simulator
    npm run ios

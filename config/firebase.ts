@@ -16,8 +16,16 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID
 };
 
+// Log Firebase configuration for testing
+console.log('🔥 Firebase Configuration:');
+console.log('  Project ID:', firebaseConfig.projectId);
+console.log('  Auth Domain:', firebaseConfig.authDomain);
+console.log('  API Key exists:', !!firebaseConfig.apiKey);
+console.log('  App ID exists:', !!firebaseConfig.appId);
+
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+console.log('✅ Firebase App initialized successfully');
 
 // Initialize Firebase Auth with AsyncStorage persistence for React Native
 let auth: any;
@@ -28,9 +36,11 @@ try {
     // @ts-ignore - Persistence configuration
     persistence: AsyncStorage
   });
+  console.log('✅ Firebase Auth initialized with AsyncStorage');
 } catch {
   // If already initialized, get the existing instance
   auth = getAuth(app);
+  console.log('✅ Firebase Auth instance retrieved');
 }
 
 export { auth };

@@ -9,7 +9,7 @@ const WelcomeScreen = ({ onGetStarted }: { onGetStarted: () => void }) => {
         <View className="items-center mb-4">
           <View className="w-40 h-40 rounded-3xl items-center justify-center mb-6 shadow-lg">
             {/* <Text className="text-4xl">🌱</Text> */}
-              <Image source={require('../assets/agricast.png')} className="w-80 h-80" />
+              <Image source={require('../assets/farmer.png')} className="w-80 h-80" />
           </View>
           
           {/* <Text className="text-5xl font-black text-white text-center mb-4 tracking-tight">

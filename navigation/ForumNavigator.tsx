@@ -1,10 +1,10 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ForumScreen from '../screens/ForumScreen';
 import PostDetailScreen from '../components/forum/PostDetailScreen';
 import CreatePostScreen from '../components/forum/CreatePostScreen';
 
-const Stack = createStackNavigator();
+const Stack = createNativeStackNavigator();
 
 const ForumNavigator = () => {
   return (

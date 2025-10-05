@@ -1,5 +1,5 @@
 import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import HomeScreen from '../screens/HomeScreen';
 import ForecastScreen from '../screens/ForecastScreen';
 import { WeatherData } from '../weather/api';
@@ -12,7 +12,7 @@ export type HomeStackParamList = {
   };
 };
 
-const Stack = createStackNavigator<HomeStackParamList>();
+const Stack = createNativeStackNavigator<HomeStackParamList>();
 
 const HomeNavigator: React.FC = () => {
   return (
