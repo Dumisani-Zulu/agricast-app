@@ -80,7 +80,13 @@ const ForumScreen = ({ navigation }: { navigation: any }) => {
     return (
       <TouchableOpacity
         className="bg-gray-800 rounded-xl p-4 mb-4 mx-4"
-        onPress={() => navigation.navigate('PostDetail', { post: item })}
+        onPress={() => navigation.navigate('PostDetail', { 
+          post: {
+            ...item,
+            createdAt: item.createdAt.toISOString(),
+            updatedAt: item.updatedAt.toISOString()
+          }
+        })}
       >
         <View className="flex-row items-start justify-between mb-2">
           <View className="flex-1">

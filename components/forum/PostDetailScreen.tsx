@@ -8,7 +8,19 @@ import { useAuth } from '../../contexts/AuthContext';
 const PostDetailScreen = ({ route }: { route: any }) => {
   const { post: initialPost } = route.params;
   const { user } = useAuth();
-  const [post, setPost] = useState<Post>(initialPost);
+  
+  // Convert serialized dates back to Date objects
+  const deserializedPost: Post = {
+    ...initialPost,
+    createdAt: typeof initialPost.createdAt === 'string' 
+      ? new Date(initialPost.createdAt) 
+      : initialPost.createdAt,
+    updatedAt: typeof initialPost.updatedAt === 'string' 
+      ? new Date(initialPost.updatedAt) 
+      : initialPost.updatedAt
+  };
+  
+  const [post, setPost] = useState<Post>(deserializedPost);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [newReply, setNewReply] = useState('');
   const [loading, setLoading] = useState(true);
