@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { SafeAreaView, StatusBar, View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';

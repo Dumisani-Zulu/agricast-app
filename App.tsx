@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import HomeNavigator from './navigation/HomeNavigator';
-import CropsScreen from './screens/CropsScreen';
+import CropsNavigator from './navigation/CropsNavigator';
 import ToolsNavigator from './navigation/ToolsNavigator';
 import ForumNavigator from './navigation/ForumNavigator';
 import ProfileNavigator from './navigation/ProfileNavigator';
@@ -89,7 +89,7 @@ const AppNavigator = () => {
         })}
       >
         <Tab.Screen name="Home" component={HomeNavigator} />
-        <Tab.Screen name="Crops" component={CropsScreen} />
+        <Tab.Screen name="Crops" component={CropsNavigator} />
         <Tab.Screen name="Tools" component={ToolsNavigator} />
         <Tab.Screen name="Forum" component={ForumNavigator} />
         <Tab.Screen name="Profile" component={ProfileNavigator} />
