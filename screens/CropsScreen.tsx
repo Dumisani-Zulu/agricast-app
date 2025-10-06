@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useWeather } from '../weather/hooks/useWeather';
+import { useWeather } from '../contexts/WeatherContext'; // Corrected import
 import { getCropRecommendations } from '../services/cropService';
 import { CropRecommendationResponse } from '../types/crop';
 
@@ -10,69 +10,57 @@ interface CropsScreenProps {
 }
 
 const CropsScreen = ({ navigation }: CropsScreenProps) => {
-  const weather = useWeather({ auto: true });
+  const weather = useWeather(); // No longer needs options, context handles it
   const [recommendations, setRecommendations] = useState<CropRecommendationResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [cropLoading, setCropLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const previousLocationRef = useRef<string | null>(null);
 
-  const loadRecommendations = async (forceReload: boolean = false) => {
+  const loadRecommendations = useCallback(async () => {
     if (!weather.data || !weather.locationName) {
-      console.log('⏸️ [CropsScreen] Waiting for weather data...');
+      console.log('⏸️ [CropsScreen] Waiting for weather data to load recommendations.');
       return;
     }
     
     console.log('🚀 [CropsScreen] Loading recommendations for', weather.locationName);
-    setLoading(true);
+    setCropLoading(true);
     setError(null);
     
     const startTime = Date.now();
     
     try {
-      // Use cache unless forced to reload
-      const result = await getCropRecommendations(weather.data, weather.locationName, !forceReload);
+      // Use cache by default
+      const result = await getCropRecommendations(weather.data, weather.locationName, true);
       setRecommendations(result);
-      previousLocationRef.current = weather.locationName;
       console.log(`✨ [CropsScreen] Recommendations displayed in ${Date.now() - startTime}ms`);
     } catch (err: any) {
       console.error('❌ [CropsScreen] Error loading recommendations:', err);
       setError(err.message || 'Failed to load crop recommendations');
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // Monitor location changes
-  useEffect(() => {
-    console.log('🔄 [CropsScreen] Effect triggered:', {
-      hasData: !!weather.data,
-      currentLocation: weather.locationName,
-      previousLocation: previousLocationRef.current,
-      hasRecommendations: !!recommendations,
-    });
-    
-    // Only load if we have weather data and location
-    if (!weather.data || !weather.locationName) {
-      return;
-    }
-    
-    // Check if location has changed
-    if (previousLocationRef.current !== weather.locationName) {
-      console.log('📍 [CropsScreen] Location changed from', previousLocationRef.current, 'to', weather.locationName);
-      loadRecommendations();
-    } else if (!recommendations) {
-      console.log('📋 [CropsScreen] No recommendations yet, loading...');
-      loadRecommendations();
+      setCropLoading(false);
     }
   }, [weather.data, weather.locationName]);
 
+  // Main effect to react to weather changes
+  useEffect(() => {
+    console.log('🔄 [CropsScreen] Effect triggered:', {
+      isReady: weather.isReady,
+      currentLocation: weather.locationName,
+    });
+
+    if (weather.isReady) {
+      console.log('✅ [CropsScreen] Weather is ready. Loading recommendations for', weather.locationName);
+      loadRecommendations();
+    } else {
+      console.log('⏳ [CropsScreen] Weather not ready. Clearing recommendations.');
+      // Clear recommendations when weather is not ready (e.g., during location change)
+      setRecommendations(null);
+    }
+  }, [weather.isReady, weather.locationName, loadRecommendations]);
+
   const handleRefresh = async () => {
     console.log('🔄 [CropsScreen] Manual refresh triggered');
-    previousLocationRef.current = null; // Clear to force reload
+    // The context's reload will trigger the useEffect chain
     await weather.reload();
-    if (weather.data && weather.locationName) {
-      loadRecommendations(true); // Force reload, skip cache
-    }
   };
 
   const handleCropPress = (crop: any) => {
@@ -88,7 +76,8 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
     return '#ef4444'; // red
   };
 
-  if (weather.loading || loading) {
+  // Combined loading state
+  if (weather.loading || cropLoading) {
     return (
       <View className="flex-1 bg-gray-900">
         <View className="pt-20 pb-4 px-4 bg-gray-800">
@@ -96,26 +85,29 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
         </View>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#16a34a" />
-          <Text className="text-gray-400 mt-4">Loading crop recommendations...</Text>
+          <Text className="text-gray-400 mt-4">
+            {weather.loading ? 'Fetching weather data...' : 'Loading crop recommendations...'}
+          </Text>
         </View>
       </View>
     );
   }
 
+  // Combined error state
   if (error || weather.error) {
     return (
       <View className="flex-1 bg-gray-900">
         <View className="pt-20 pb-4 px-4 bg-gray-800">
           <Text className="text-2xl font-bold text-white">Crop Recommendations</Text>
         </View>
-        <View className="flex-1 items-center justify-center px-8">
-          <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#4b5563" />
-          <Text className="text-white text-xl font-semibold mt-4 text-center">
+        <View className="flex-1 items-center justify-center p-4">
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#ef4444" />
+          <Text className="text-red-500 text-lg mt-4 text-center">
             {error || weather.error}
           </Text>
           <TouchableOpacity
-            className="bg-green-600 rounded-lg px-6 py-3 mt-6"
             onPress={handleRefresh}
+            className="mt-6 bg-blue-600 py-2 px-6 rounded-lg"
           >
             <Text className="text-white font-semibold">Try Again</Text>
           </TouchableOpacity>
@@ -165,7 +157,7 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
       <ScrollView 
         className="flex-1"
         refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={handleRefresh} tintColor="#22c55e" />
+          <RefreshControl refreshing={weather.loading || cropLoading} onRefresh={handleRefresh} tintColor="#22c55e" />
         }
       >
 

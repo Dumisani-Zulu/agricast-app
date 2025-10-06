@@ -1,8 +1,7 @@
-
 import { SafeAreaView, StatusBar, View, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useWeather } from '../weather/hooks/useWeather';
+import { useWeather } from '../contexts/WeatherContext'; // Corrected import
 import { WeatherMainScreen } from '../weather/components/WeatherMainScreen';
 import { LocationSearch } from '../weather/components/LocationSearch';
 import { Weather14DayPreview } from '../weather/components/Weather14DayPreview';
@@ -12,12 +11,10 @@ type HomeScreenNavigationProp = StackNavigationProp<HomeStackParamList, 'HomeMai
 
 const HomeScreen = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { data, loading, error, locationName, loadForLocation } = useWeather({
-    auto: true,
-    defaultLocation: 'Lusaka',
-  });
+  const { data, loading, error, locationName, loadForLocation } = useWeather(); // Context handles all logic
 
   const handleLocationSelect = (coords: { latitude: number; longitude: number }, selectedLocationName: string) => {
+    console.log('📍 [HomeScreen] New location selected:', selectedLocationName);
     loadForLocation(coords, selectedLocationName);
   };
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,12 +13,13 @@ import WelcomeScreen from './screens/WelcomeScreen';
 import AuthScreen from './screens/AuthScreen';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { WeatherProvider } from './contexts/WeatherContext';
 
 import './global.css';
 
 const Tab = createBottomTabNavigator();
 
-const AppNavigator = () => {
+function AppContent() {
   const { user, loading } = useAuth();
   const [showWelcome, setShowWelcome] = useState(true);
 
@@ -37,23 +37,13 @@ const AppNavigator = () => {
   }
 
   // Show welcome screen first
-  if (showWelcome) {
-    return (
-      <>
-        <WelcomeScreen onGetStarted={handleGetStarted} />
-        <StatusBar style="light" />
-      </>
-    );
+  if (showWelcome && !user) {
+    return <WelcomeScreen onGetStarted={handleGetStarted} />;
   }
 
   // Show auth screen if user is not authenticated
   if (!user) {
-    return (
-      <>
-        <AuthScreen />
-        <StatusBar style="light" />
-      </>
-    );
+    return <AuthScreen />;
   }
 
   // Show main app if user is authenticated
@@ -97,14 +87,18 @@ const AppNavigator = () => {
       <StatusBar style="light" />
     </NavigationContainer>
   );
-};
+}
 
-export default function App() {
+const App = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
-        <AppNavigator />
+        <WeatherProvider>
+          <AppContent />
+        </WeatherProvider>
       </AuthProvider>
     </GestureHandlerRootView>
   );
-}
+};
+
+export default App;
