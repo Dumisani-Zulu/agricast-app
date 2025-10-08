@@ -167,6 +167,13 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
           />
           
           <MenuButton 
+            icon="bookmark-outline"
+            title="Saved Recommendations"
+            subtitle="View your saved crop recommendations"
+            onPress={() => navigation.navigate('SavedRecommendations')}
+          />
+          
+          <MenuButton 
             icon="notifications-outline" 
             title="Notifications" 
             subtitle="Manage your notification preferences"

@@ -1,10 +1,10 @@
-
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import PrivacySettingsScreen from '../screens/profile/PrivacySettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
+import SavedRecommendationsScreen from '../screens/profile/SavedRecommendationsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -21,6 +21,7 @@ const ProfileNavigator = () => {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
+      <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} />
     </Stack.Navigator>
   );
 };

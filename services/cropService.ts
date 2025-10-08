@@ -2,6 +2,8 @@ import { geminiModels } from '../config/gemini';
 import { WeatherData } from '../weather/api';
 import { CropRecommendationResponse, WeatherAnalysis, Crop } from '../types/crop';
 import { getCachedRecommendations, setCachedRecommendations } from './cropCache';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 // Track ongoing requests to prevent duplicates
 const ongoingRequests: Map<string, Promise<CropRecommendationResponse>> = new Map();
@@ -280,5 +282,51 @@ Make it practical and specific for small-scale farmers.`;
   } catch (error) {
     console.error('Error getting crop details:', error);
     throw error;
+  }
+};
+
+export const saveCropRecommendation = async (crop: Crop): Promise<void> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const db = getFirestore();
+  const userDocRef = doc(db, 'users', user.uid);
+
+  console.log(`💾 [CropService] Saving crop recommendation for user ${user.uid}...`);
+  
+  await updateDoc(userDocRef, {
+    savedCrops: arrayUnion(crop)
+  }).catch(async (error) => {
+    if (error.code === 'not-found') {
+      await setDoc(userDocRef, { savedCrops: [crop] });
+    } else {
+      throw error;
+    }
+  });
+  console.log(`✅ [CropService] Crop recommendation saved successfully.`);
+};
+
+export const getSavedCropRecommendations = async (): Promise<Crop[]> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const db = getFirestore();
+  const userDocRef = doc(db, 'users', user.uid);
+
+  console.log(`📂 [CropService] Fetching saved crop recommendations for user ${user.uid}...`);
+  const docSnap = await getDoc(userDocRef);
+
+  if (docSnap.exists() && docSnap.data().savedCrops) {
+    console.log(`✅ [CropService] Found ${docSnap.data().savedCrops.length} saved crops.`);
+    return docSnap.data().savedCrops as Crop[];
+  } else {
+    console.log(`ℹ️ [CropService] No saved crops found for this user.`);
+    return [];
   }
 };
