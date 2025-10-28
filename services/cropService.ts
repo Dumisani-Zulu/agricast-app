@@ -97,52 +97,64 @@ export const getCropRecommendations = async (
       const model = geminiModels.text;
 
       // Optimized prompt - more concise, focused on Zambian crops
-      const prompt = `You are an agricultural advisor for Zambian farmers. Based on weather forecast for ${locationName}, recommend 4 suitable crops.
+      const prompt = `You are an expert-level agricultural advisor and agronomist specializing in Zambian agriculture. Your task is to provide highly accurate and actionable crop recommendations for a farmer in ${locationName}.
 
-Weather (Next 7 Days):
-- Temp: ${analysis.averageTemperature}°C
-- Rain: ${analysis.totalRainfall}mm
-- Conditions: ${analysis.conditions}
+**Farmer's Context:**
+- **Location:** ${locationName}, Zambia
+- **Weather Forecast (Next 14 Days):**
+  - Average Temperature: ${analysis.averageTemperature}°C
+  - Total Rainfall: ${analysis.totalRainfall}mm
+  - General Conditions: ${analysis.conditions}
 
-IMPORTANT: Focus on crops commonly grown in Zambia (maize, groundnuts, beans, sunflower, sweet potato, cassava, tobacco, cotton, sorghum, millet, vegetables like tomatoes, rape, cabbage, onions).
+**Your Goal:**
+Analyze the provided weather data and recommend **6 diverse and suitable crops**. Your recommendations must be practical for a Zambian farmer.
 
-Return ONLY valid JSON:
+**CRITICAL INSTRUCTIONS:**
+1.  **Expert Analysis:** Don't just list crops. Deeply analyze the interplay between temperature, rainfall, and conditions. For example, high rainfall and high temperature might increase fungal disease risk.
+2.  **Crop Diversity:** Recommend a mix of crop types: staple foods (like maize), cash crops (like cotton or tobacco, if suitable), legumes (for soil health), and vegetables. Include at least one drought-tolerant option if conditions are dry.
+3.  **Justify Everything:** Your reasoning for each crop is the most important part. Clearly explain *why* a crop is suitable based on the specific weather data.
+4.  **Actionable Advice:** Provide practical, concise advice a farmer can act on immediately.
+5.  **Strict JSON Output:** You MUST return ONLY a single, valid JSON object. Do not include any text, explanations, or markdown formatting before or after the JSON block.
+
+**JSON STRUCTURE:**
 {
-  "weatherSummary": "Brief weather summary (max 2 sentences)",
+  "weatherSummary": "A 2-sentence expert summary of the upcoming weather's implications for farming.",
   "recommendations": [
     {
       "crop": {
-        "id": "crop-name-lowercase",
+        "id": "crop-name-lowercase-with-hyphens",
         "name": "Crop Name",
-        "scientificName": "Scientific name",
-        "category": "Grain/Vegetable/Legume/Root Crop",
-        "description": "1-2 sentence description",
+        "scientificName": "Scientific Name",
+        "category": "Grain/Vegetable/Legume/Root Crop/Cash Crop",
+        "description": "A 1-2 sentence description of the crop and its relevance in Zambia.",
         "icon": "🌽",
         "optimalTemperature": {"min": 15, "max": 30, "unit": "°C"},
         "waterRequirement": "Low/Medium/High",
         "growingSeasonDays": 90,
-        "sunlightRequirement": "Full Sun",
-        "soilType": ["Loamy"],
-        "plantingDepth": "2-3cm",
-        "spacing": "30cm x 60cm",
-        "plantingTime": "Best season",
-        "careInstructions": ["tip1", "tip2", "tip3"],
-        "commonPests": ["pest1", "pest2"],
-        "commonDiseases": ["disease1", "disease2"],
-        "harvestTime": "When to harvest",
-        "harvestYield": "Expected yield",
-        "storageInstructions": "Storage method"
+        "sunlightRequirement": "Full Sun/Partial Shade",
+        "soilType": ["Loamy", "Well-drained"],
+        "plantingDepth": "e.g., 2-5cm",
+        "spacing": "e.g., 25cm x 75cm",
+        "plantingTime": "Optimal planting window for the region.",
+        "careInstructions": ["Key care instruction 1", "Key care instruction 2", "Key care instruction 3"],
+        "commonPests": ["Pest 1", "Pest 2"],
+        "commonDiseases": ["Disease 1", "Disease 2"],
+        "harvestTime": "e.g., 90-120 days after planting",
+        "harvestYield": "e.g., 3-5 tonnes/hectare",
+        "storageInstructions": "Brief storage advice."
       },
-      "suitabilityScore": 85,
-      "reasoning": "Why suitable (1 sentence)",
-      "benefits": ["benefit1", "benefit2"],
-      "warnings": ["warning if any"]
+      "suitabilityScore": 90,
+      "reasoning": "Detailed reasoning (2-3 sentences) directly linking the crop's needs to the provided weather data (temp, rain).",
+      "benefits": ["Primary benefit (e.g., High market demand)", "Secondary benefit (e.g., Improves soil nitrogen)"],
+      "warnings": ["A potential risk based on the forecast (e.g., 'High humidity may increase risk of blight.')"]
     }
   ],
-  "generalAdvice": "Farming tip for current conditions (1-2 sentences)"
+  "generalAdvice": "A critical farming tip for the upcoming 14 days based on the weather summary."
 }
 
-Provide 4 diverse crops. Return ONLY the JSON, no markdown.`;
+**Crops to consider (focus on what's suitable):** Maize, Groundnuts, Beans, Sunflower, Sweet Potato, Cassava, Tobacco, Cotton, Sorghum, Millet, Tomatoes, Rape, Cabbage, Onions.
+
+Begin your analysis now and return only the JSON.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
