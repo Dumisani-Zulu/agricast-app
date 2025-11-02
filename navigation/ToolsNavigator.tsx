@@ -37,11 +37,6 @@ const ToolsNavigator = () => {
         options={{ title: 'Pest Identifier' }}
       />
       <Stack.Screen 
-        name="SoilHealthChecker" 
-        component={SoilHealthChecker}
-        options={{ title: 'Soil Health Checker' }}
-      />
-      <Stack.Screen 
         name="MarketPrices" 
         component={MarketPrices}
         options={{ title: 'Market Prices' }}

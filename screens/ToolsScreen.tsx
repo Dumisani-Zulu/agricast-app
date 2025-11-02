@@ -18,12 +18,6 @@ const tools = [
     route: 'PestIdentifier',
   },
   {
-    name: 'Soil Health Checker',
-    description: 'Analyze soil health and get recommendations.',
-    icon: <MaterialCommunityIcons name="shovel" size={30} color="#a16207" />,
-    route: 'SoilHealthChecker',
-  },
-  {
     name: 'Market Prices',
     description: 'Check current market prices for your produce.',
     icon: <Entypo name="price-tag" size={28} color="#f472b6" />,
