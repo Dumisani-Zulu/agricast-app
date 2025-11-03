@@ -123,38 +123,6 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
           </View>
         </View>
 
-        {/* Farm Information */}
-        <View className="mx-6 mb-6">
-          <Text className="text-white text-lg font-semibold mb-4 flex-row items-center">
-            <Text className="text-2xl font-bold text-[#16a34a]">Farm Information</Text>
-          </Text>
-          
-          <View className="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/30">
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-gray-400">Farm Size</Text>
-              <Text className="text-white font-semibold">{userProfile.farmSize}</Text>
-            </View>
-            <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-gray-400">Experience</Text>
-              <Text className="text-white font-semibold">{userProfile.experience}</Text>
-            </View>
-            <View className="mb-2">
-              <Text className="text-gray-400 mb-2">Crop Types</Text>
-              <View className="flex-row flex-wrap">
-                {userProfile.cropTypes.map((crop, index) => (
-                  <View key={index} className="bg-green-500/20 rounded-full px-3 py-1 mr-2 mb-2">
-                    <Text className="text-green-300 text-sm">{crop}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-            <View className="flex-row justify-between items-center border-t border-gray-700/50 pt-4">
-              <Text className="text-gray-400">Member Since</Text>
-              <Text className="text-white font-semibold">{userProfile.joinDate}</Text>
-            </View>
-          </View>
-        </View>
-
         {/* Menu Options */}
         <View className="mx-6 mb-6">
           <Text className="text-2xl font-bold text-[#16a34a] mb-4">Account</Text>
@@ -171,6 +139,13 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
             title="Saved Recommendations"
             subtitle="View your saved crop recommendations"
             onPress={() => navigation.navigate('SavedRecommendations')}
+          />
+          
+          <MenuButton 
+            icon="folder-open-outline"
+            title="Saved Identifications"
+            subtitle="View saved diseases and pests (offline)"
+            onPress={() => navigation.navigate('SavedIdentifications')}
           />
           
           <MenuButton 

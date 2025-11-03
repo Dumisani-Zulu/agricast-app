@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Alert, Image, ScrollView, ActivityIndicat
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { geminiModels } from '../../config/gemini';
+import { savePestIdentification } from '../../services/savedIdentifications';
 
 interface PestResult {
   pestName: string;
@@ -26,6 +27,7 @@ const PestIdentifier = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<PestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const requestPermissions = async () => {
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
@@ -186,6 +188,29 @@ Provide practical, locally-available solutions suitable for Zambian smallholder 
     setResult(null);
     setError(null);
     setAnalyzing(false);
+  };
+
+  const handleSaveIdentification = async () => {
+    if (!result || !selectedImage) return;
+
+    setSaving(true);
+    try {
+      await savePestIdentification(selectedImage, result);
+      Alert.alert(
+        'Saved Successfully',
+        'This pest identification has been saved to your profile for offline viewing.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error saving identification:', error);
+      Alert.alert(
+        'Save Failed',
+        'Could not save this identification. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getSeverityColor = (severity: string) => {
@@ -479,7 +504,22 @@ Provide practical, locally-available solutions suitable for Zambian smallholder 
               </View>
             </View>
 
-            {/* Action Button */}
+            {/* Action Buttons */}
+            <TouchableOpacity
+              className="bg-green-600 rounded-xl p-4 flex-row items-center justify-center mb-3"
+              onPress={handleSaveIdentification}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="content-save" size={24} color="white" />
+                  <Text className="text-white font-semibold ml-2 text-lg">Save for Offline Review</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
             <TouchableOpacity
               className="bg-yellow-600 rounded-xl p-4 flex-row items-center justify-center"
               onPress={resetAnalysis}
