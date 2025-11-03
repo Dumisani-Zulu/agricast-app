@@ -150,42 +150,6 @@ const EditProfileScreen = ({ navigation }: { navigation: any }) => {
           />
         </View>
 
-        {/* Farm Information */}
-        <View className="mb-6">
-          <Text className="text-white text-lg font-semibold mb-4">
-            Farm Information
-          </Text>
-          
-          <InputField
-            label="Farm Size"
-            value={formData.farmSize}
-            onChangeText={(text) => setFormData({ ...formData, farmSize: text })}
-            placeholder="e.g. 25 hectares"
-          />
-          
-          <InputField
-            label="Experience"
-            value={formData.experience}
-            onChangeText={(text) => setFormData({ ...formData, experience: text })}
-            placeholder="e.g. 8 years"
-          />
-          
-          <InputField
-            label="Crop Types"
-            value={formData.cropTypes}
-            onChangeText={(text) => setFormData({ ...formData, cropTypes: text })}
-            placeholder="e.g. Maize, Soybeans, Tomatoes"
-          />
-          
-          <InputField
-            label="Bio"
-            value={formData.bio}
-            onChangeText={(text) => setFormData({ ...formData, bio: text })}
-            placeholder="Tell us about yourself and your farming experience"
-            multiline={true}
-          />
-        </View>
-
         <View className="h-8" />
       </ScrollView>
     </SafeAreaView>
