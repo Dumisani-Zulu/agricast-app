@@ -3,8 +3,8 @@ import { CropRecommendationResponse } from '../types/crop';
 // In-memory cache for crop recommendations
 const cache: Map<string, { data: CropRecommendationResponse; timestamp: number }> = new Map();
 
-// Cache duration: 1 hour
-const CACHE_DURATION = 60 * 60 * 1000;
+// Cache duration: 30 minutes (reduced from 1 hour for more weather-responsive recommendations)
+const CACHE_DURATION = 30 * 60 * 1000;
 
 /**
  * Get cached recommendations for a location

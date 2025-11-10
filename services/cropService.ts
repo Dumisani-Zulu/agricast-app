@@ -35,16 +35,30 @@ export const analyzeWeatherData = (weatherData: WeatherData): WeatherAnalysis =>
   const avgTemp = totalTemp / forecastHours;
   const avgWind = totalWind / forecastHours;
   
-  // Determine general conditions
-  let conditions = 'Moderate';
-  if (avgTemp > 30) conditions = 'Hot and Dry';
-  else if (avgTemp > 25) conditions = 'Warm';
-  else if (avgTemp > 15) conditions = 'Mild';
+  // Determine season type and conditions based on rainfall
+  let conditions = '';
+  let seasonType = '';
+  
+  // Temperature classification
+  if (avgTemp > 28) conditions = 'Hot';
+  else if (avgTemp > 23) conditions = 'Warm';
+  else if (avgTemp > 18) conditions = 'Mild';
   else conditions = 'Cool';
   
-  if (totalRain > 50) conditions += ', Rainy';
-  else if (totalRain > 20) conditions += ', Moderate Rain';
-  else conditions += ', Low Rain';
+  // Rainfall classification - critical for crop selection
+  if (totalRain > 70) {
+    conditions += ', Very Wet (Rainy Season)';
+    seasonType = 'WET_SEASON';
+  } else if (totalRain > 40) {
+    conditions += ', Moderate Rain (Early/Late Rainy Season)';
+    seasonType = 'MODERATE_WET';
+  } else if (totalRain > 20) {
+    conditions += ', Light Rain (Dry-Wet Transition)';
+    seasonType = 'TRANSITION';
+  } else {
+    conditions += ', Dry (Dry Season)';
+    seasonType = 'DRY_SEASON';
+  }
   
   const analysis = {
     averageTemperature: Math.round(avgTemp * 10) / 10,
@@ -52,6 +66,7 @@ export const analyzeWeatherData = (weatherData: WeatherData): WeatherAnalysis =>
     uvIndex: Math.round(maxUV * 10) / 10,
     windSpeed: Math.round(avgWind * 10) / 10,
     conditions,
+    seasonType, // Added for better crop filtering
   };
   
   console.log(`✅ [CropService] Weather analysis complete in ${Date.now() - startTime}ms`, analysis);
@@ -96,7 +111,7 @@ export const getCropRecommendations = async (
       
       const model = geminiModels.text;
 
-      // Optimized prompt - more concise, focused on Zambian crops
+      // Enhanced prompt with stronger weather-based filtering
       const prompt = `You are an expert-level agricultural advisor and agronomist specializing in Zambian agriculture. Your task is to provide highly accurate and actionable crop recommendations for a farmer in ${locationName}.
 
 **Farmer's Context:**
@@ -106,19 +121,36 @@ export const getCropRecommendations = async (
   - Total Rainfall: ${analysis.totalRainfall}mm
   - General Conditions: ${analysis.conditions}
 
-**Your Goal:**
-Analyze the provided weather data and recommend **6 diverse and suitable crops**. Your recommendations must be practical for a Zambian farmer.
+**WEATHER-BASED FILTERING RULES (MANDATORY):**
+
+**Temperature-Based Rules:**
+- If average temp > 28°C: EXCLUDE cool-season crops (cabbage, peas, lettuce)
+- If average temp < 18°C: EXCLUDE heat-loving crops (cotton, sunflower, sorghum)
+- Match crop temperature requirements EXACTLY to forecast
+
+**Rainfall-Based Rules:**
+- If total rainfall > 70mm: ONLY recommend high-water crops (rice, taro, water-tolerant varieties)
+- If total rainfall 40-70mm: Recommend moderate water crops (maize, beans, vegetables)
+- If total rainfall 20-40mm: Recommend drought-tolerant crops (cassava, sweet potato, millet, sorghum)
+- If total rainfall < 20mm: ONLY recommend drought-resistant crops (cassava, sweet potato, millet, groundnuts)
+
+**Season Matching:**
+- Rainy season (total rainfall > 50mm): Maize, rice, beans, groundnuts, vegetables
+- Dry season (total rainfall < 30mm): Cassava, sweet potato, millet, sorghum, drought-tolerant varieties
+- Transitional: Mixed recommendations with irrigation advice
 
 **CRITICAL INSTRUCTIONS:**
-1.  **Expert Analysis:** Don't just list crops. Deeply analyze the interplay between temperature, rainfall, and conditions. For example, high rainfall and high temperature might increase fungal disease risk.
-2.  **Crop Diversity:** Recommend a mix of crop types: staple foods (like maize), cash crops (like cotton or tobacco, if suitable), legumes (for soil health), and vegetables. Include at least one drought-tolerant option if conditions are dry.
-3.  **Justify Everything:** Your reasoning for each crop is the most important part. Clearly explain *why* a crop is suitable based on the specific weather data.
-4.  **Actionable Advice:** Provide practical, concise advice a farmer can act on immediately.
-5.  **Strict JSON Output:** You MUST return ONLY a single, valid JSON object. Do not include any text, explanations, or markdown formatting before or after the JSON block.
+1.  **STRICT FILTERING:** First eliminate crops that DON'T match the weather. Only consider crops whose requirements align with the forecast.
+2.  **Temperature Match:** Crop's optimal temperature range MUST overlap with ${analysis.averageTemperature}°C
+3.  **Water Match:** Crop's water requirement MUST match rainfall level (${analysis.totalRainfall}mm)
+4.  **Real Analysis:** If it's rainy, DON'T recommend dry-season crops. If it's dry, DON'T recommend water-intensive crops.
+5.  **Crop Diversity:** Recommend 6 diverse crops from suitable options: staple foods, cash crops, legumes, vegetables
+6.  **High Suitability Only:** Every crop must have suitability score ≥ 75 based on weather match
+7.  **Strict JSON Output:** Return ONLY a single, valid JSON object. No markdown, no extra text.
 
 **JSON STRUCTURE:**
 {
-  "weatherSummary": "A 2-sentence expert summary of the upcoming weather's implications for farming.",
+  "weatherSummary": "A 2-sentence expert summary emphasizing whether conditions favor wet-season or dry-season crops.",
   "recommendations": [
     {
       "crop": {
@@ -126,35 +158,50 @@ Analyze the provided weather data and recommend **6 diverse and suitable crops**
         "name": "Crop Name",
         "scientificName": "Scientific Name",
         "category": "Grain/Vegetable/Legume/Root Crop/Cash Crop",
-        "description": "A 1-2 sentence description of the crop and its relevance in Zambia.",
+        "description": "A 1-2 sentence description emphasizing why this crop matches current weather.",
         "icon": "🌽",
-        "optimalTemperature": {"min": 15, "max": 30, "unit": "°C"},
-        "waterRequirement": "Low/Medium/High",
+        "optimalTemperature": {"min": XX, "max": XX, "unit": "°C"},
+        "waterRequirement": "Low/Medium/High (MUST match rainfall level)",
         "growingSeasonDays": 90,
         "sunlightRequirement": "Full Sun/Partial Shade",
         "soilType": ["Loamy", "Well-drained"],
         "plantingDepth": "e.g., 2-5cm",
         "spacing": "e.g., 25cm x 75cm",
-        "plantingTime": "Optimal planting window for the region.",
-        "careInstructions": ["Key care instruction 1", "Key care instruction 2", "Key care instruction 3"],
+        "plantingTime": "Based on current rainfall pattern.",
+        "careInstructions": ["Care instruction specific to current weather", "Care instruction 2", "Care instruction 3"],
         "commonPests": ["Pest 1", "Pest 2"],
         "commonDiseases": ["Disease 1", "Disease 2"],
         "harvestTime": "e.g., 90-120 days after planting",
         "harvestYield": "e.g., 3-5 tonnes/hectare",
         "storageInstructions": "Brief storage advice."
       },
-      "suitabilityScore": 90,
-      "reasoning": "Detailed reasoning (2-3 sentences) directly linking the crop's needs to the provided weather data (temp, rain).",
-      "benefits": ["Primary benefit (e.g., High market demand)", "Secondary benefit (e.g., Improves soil nitrogen)"],
-      "warnings": ["A potential risk based on the forecast (e.g., 'High humidity may increase risk of blight.')"]
+      "suitabilityScore": 85,
+      "reasoning": "MUST explicitly state: 'With ${analysis.totalRainfall}mm rainfall and ${analysis.averageTemperature}°C temperature, this crop is suitable because...' Link crop's water/temp needs to actual forecast.",
+      "benefits": ["Benefit that relates to current weather", "Secondary benefit"],
+      "warnings": ["Weather-specific risk (e.g., 'Current high rainfall may require drainage' OR 'Low rainfall requires irrigation')"]
     }
   ],
-  "generalAdvice": "A critical farming tip for the upcoming 14 days based on the weather summary."
+  "generalAdvice": "Critical farming tip for the ${analysis.totalRainfall}mm rainfall and ${analysis.averageTemperature}°C temperature forecast."
 }
 
-**Crops to consider (focus on what's suitable):** Maize, Groundnuts, Beans, Sunflower, Sweet Potato, Cassava, Tobacco, Cotton, Sorghum, Millet, Tomatoes, Rape, Cabbage, Onions.
+**Available Crops by Water Requirement:**
+- **High Water (>70mm rainfall):** Rice, Taro, Water-tolerant Maize varieties, Wetland crops
+- **Medium Water (40-70mm):** Maize, Beans, Groundnuts, Soybeans, Tomatoes, Cabbage, Onions, Rape
+- **Low Water (<40mm):** Cassava, Sweet Potato, Millet, Sorghum, Drought-tolerant Groundnuts
 
-Begin your analysis now and return only the JSON.`;
+**Available Crops by Temperature:**
+- **Hot (>28°C):** Cotton, Sunflower, Sorghum, Millet, Cassava, Sweet Potato
+- **Warm (20-28°C):** Maize, Beans, Groundnuts, Tomatoes, Most vegetables
+- **Cool (<20°C):** Cabbage, Peas, Irish Potatoes, Carrots
+
+**VALIDATION CHECK:**
+Before finalizing, verify each recommended crop:
+✓ Temperature range includes ${analysis.averageTemperature}°C
+✓ Water requirement matches ${analysis.totalRainfall}mm level (Low/Medium/High)
+✓ Suitability score reflects true weather alignment (not arbitrary)
+✓ Reasoning directly references the actual rainfall and temperature numbers
+
+Begin your analysis now. First identify if this is a WET or DRY period, then select ONLY crops suited to that condition. Return only the JSON.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;

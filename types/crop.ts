@@ -49,6 +49,7 @@ export interface WeatherAnalysis {
   uvIndex: number;
   windSpeed: number;
   conditions: string;
+  seasonType?: string; // WET_SEASON, DRY_SEASON, MODERATE_WET, TRANSITION
 }
 
 export interface CropRecommendation {
