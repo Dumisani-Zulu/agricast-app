@@ -161,11 +161,58 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
         }
       >
 
-      {/* Weather Summary */}
-      <View className="bg-gray-800 m-4 p-4 rounded-xl">
+      {/* Current Weather Stats (Real-time) */}
+      {weather.data && (
+        <View className="bg-gray-800 m-4 p-4 rounded-xl">
+          <View className="flex-row items-center mb-3">
+            <MaterialCommunityIcons name="thermometer" size={24} color="#3b82f6" />
+            <Text className="text-white font-bold text-lg ml-2">Current Weather</Text>
+          </View>
+          
+          <View className="flex-row justify-between">
+            {/* Temperature */}
+            <View className="flex-1 items-center bg-gray-700 rounded-lg p-3 mr-2">
+              <MaterialCommunityIcons name="thermometer" size={20} color="#ef4444" />
+              <Text className="text-2xl font-bold text-white mt-1">
+                {Math.round(weather.data.hourly.temperature_2m[0])}°C
+              </Text>
+              <Text className="text-gray-400 text-xs mt-1">Temperature</Text>
+            </View>
+            
+            {/* Rainfall */}
+            <View className="flex-1 items-center bg-gray-700 rounded-lg p-3 ml-2">
+              <MaterialCommunityIcons name="water" size={20} color="#3b82f6" />
+              <Text className="text-2xl font-bold text-white mt-1">
+                {weather.data.hourly.rain[0].toFixed(1)} mm
+              </Text>
+              <Text className="text-gray-400 text-xs mt-1">Rain Now</Text>
+            </View>
+          </View>
+          
+          {/* 7-Day Total Rainfall */}
+          <View className="bg-gray-700 rounded-lg p-3 mt-2">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <MaterialCommunityIcons name="weather-rainy" size={18} color="#60a5fa" />
+                <Text className="text-white ml-2">7-Day Forecast:</Text>
+              </View>
+              <Text className="text-white font-bold">
+                {(() => {
+                  const next7Days = weather.data.hourly.rain.slice(0, 168); // 7 days * 24 hours
+                  const totalRain = Array.from(next7Days).reduce((sum, val) => sum + val, 0);
+                  return `${totalRain.toFixed(1)} mm total`;
+                })()}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* AI Weather Analysis */}
+      <View className="bg-gray-800 mx-4 mb-4 p-4 rounded-xl">
         <View className="flex-row items-center mb-2">
-          <MaterialCommunityIcons name="weather-sunny" size={24} color="#fbbf24" />
-          <Text className="text-white font-bold text-lg ml-2">Weather Overview</Text>
+          <MaterialCommunityIcons name="brain" size={24} color="#a855f7" />
+          <Text className="text-white font-bold text-lg ml-2">AI Analysis</Text>
         </View>
         <Text className="text-gray-300">{recommendations.weatherSummary}</Text>
       </View>
