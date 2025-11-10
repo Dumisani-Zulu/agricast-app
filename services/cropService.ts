@@ -111,97 +111,57 @@ export const getCropRecommendations = async (
       
       const model = geminiModels.text;
 
-      // Enhanced prompt with stronger weather-based filtering
-      const prompt = `You are an expert-level agricultural advisor and agronomist specializing in Zambian agriculture. Your task is to provide highly accurate and actionable crop recommendations for a farmer in ${locationName}.
+      // Optimized concise prompt for faster AI response
+      const prompt = `Expert Zambian agricultural advisor: Recommend 6 crops for ${locationName} based on weather forecast.
 
-**Farmer's Context:**
-- **Location:** ${locationName}, Zambia
-- **Weather Forecast (Next 14 Days):**
-  - Average Temperature: ${analysis.averageTemperature}°C
-  - Total Rainfall: ${analysis.totalRainfall}mm
-  - General Conditions: ${analysis.conditions}
+WEATHER DATA (Next 14 days):
+- Temperature: ${analysis.averageTemperature}°C (${analysis.conditions})
+- Rainfall: ${analysis.totalRainfall}mm
+- Season: ${analysis.seasonType}
 
-**WEATHER-BASED FILTERING RULES (MANDATORY):**
+FILTERING RULES:
+- Rainfall >70mm → High-water crops (rice, taro, water-tolerant maize)
+- Rainfall 40-70mm → Medium-water crops (maize, beans, groundnuts, vegetables)
+- Rainfall 20-40mm → Drought-tolerant crops (cassava, sweet potato, millet)
+- Rainfall <20mm → Drought-resistant only (cassava, millet, sorghum, groundnuts)
+- Temp >28°C → Exclude cool crops (cabbage, peas). Include: cotton, sorghum, millet
+- Temp <18°C → Exclude heat crops. Include: cabbage, peas, potatoes
 
-**Temperature-Based Rules:**
-- If average temp > 28°C: EXCLUDE cool-season crops (cabbage, peas, lettuce)
-- If average temp < 18°C: EXCLUDE heat-loving crops (cotton, sunflower, sorghum)
-- Match crop temperature requirements EXACTLY to forecast
-
-**Rainfall-Based Rules:**
-- If total rainfall > 70mm: ONLY recommend high-water crops (rice, taro, water-tolerant varieties)
-- If total rainfall 40-70mm: Recommend moderate water crops (maize, beans, vegetables)
-- If total rainfall 20-40mm: Recommend drought-tolerant crops (cassava, sweet potato, millet, sorghum)
-- If total rainfall < 20mm: ONLY recommend drought-resistant crops (cassava, sweet potato, millet, groundnuts)
-
-**Season Matching:**
-- Rainy season (total rainfall > 50mm): Maize, rice, beans, groundnuts, vegetables
-- Dry season (total rainfall < 30mm): Cassava, sweet potato, millet, sorghum, drought-tolerant varieties
-- Transitional: Mixed recommendations with irrigation advice
-
-**CRITICAL INSTRUCTIONS:**
-1.  **STRICT FILTERING:** First eliminate crops that DON'T match the weather. Only consider crops whose requirements align with the forecast.
-2.  **Temperature Match:** Crop's optimal temperature range MUST overlap with ${analysis.averageTemperature}°C
-3.  **Water Match:** Crop's water requirement MUST match rainfall level (${analysis.totalRainfall}mm)
-4.  **Real Analysis:** If it's rainy, DON'T recommend dry-season crops. If it's dry, DON'T recommend water-intensive crops.
-5.  **Crop Diversity:** Recommend 6 diverse crops from suitable options: staple foods, cash crops, legumes, vegetables
-6.  **High Suitability Only:** Every crop must have suitability score ≥ 75 based on weather match
-7.  **Strict JSON Output:** Return ONLY a single, valid JSON object. No markdown, no extra text.
-
-**JSON STRUCTURE:**
+Return ONLY valid JSON (no markdown):
 {
-  "weatherSummary": "A 2-sentence expert summary emphasizing whether conditions favor wet-season or dry-season crops.",
+  "weatherSummary": "2-sentence summary stating if conditions favor wet/dry season crops",
   "recommendations": [
     {
       "crop": {
-        "id": "crop-name-lowercase-with-hyphens",
+        "id": "crop-name",
         "name": "Crop Name",
-        "scientificName": "Scientific Name",
-        "category": "Grain/Vegetable/Legume/Root Crop/Cash Crop",
-        "description": "A 1-2 sentence description emphasizing why this crop matches current weather.",
+        "scientificName": "Scientific",
+        "category": "Grain/Vegetable/Legume/Root Crop",
+        "description": "Why this crop suits current weather (1 sentence)",
         "icon": "🌽",
-        "optimalTemperature": {"min": XX, "max": XX, "unit": "°C"},
-        "waterRequirement": "Low/Medium/High (MUST match rainfall level)",
+        "optimalTemperature": {"min": 15, "max": 30, "unit": "°C"},
+        "waterRequirement": "Low/Medium/High",
         "growingSeasonDays": 90,
-        "sunlightRequirement": "Full Sun/Partial Shade",
-        "soilType": ["Loamy", "Well-drained"],
-        "plantingDepth": "e.g., 2-5cm",
-        "spacing": "e.g., 25cm x 75cm",
-        "plantingTime": "Based on current rainfall pattern.",
-        "careInstructions": ["Care instruction specific to current weather", "Care instruction 2", "Care instruction 3"],
+        "sunlightRequirement": "Full Sun",
+        "soilType": ["Loamy"],
+        "plantingDepth": "2-5cm",
+        "spacing": "25cm x 75cm",
+        "plantingTime": "Season based on rainfall",
+        "careInstructions": ["Tip 1", "Tip 2", "Tip 3"],
         "commonPests": ["Pest 1", "Pest 2"],
         "commonDiseases": ["Disease 1", "Disease 2"],
-        "harvestTime": "e.g., 90-120 days after planting",
-        "harvestYield": "e.g., 3-5 tonnes/hectare",
-        "storageInstructions": "Brief storage advice."
+        "harvestTime": "90-120 days",
+        "harvestYield": "3-5 tonnes/ha",
+        "storageInstructions": "Storage tip"
       },
       "suitabilityScore": 85,
-      "reasoning": "MUST explicitly state: 'With ${analysis.totalRainfall}mm rainfall and ${analysis.averageTemperature}°C temperature, this crop is suitable because...' Link crop's water/temp needs to actual forecast.",
-      "benefits": ["Benefit that relates to current weather", "Secondary benefit"],
-      "warnings": ["Weather-specific risk (e.g., 'Current high rainfall may require drainage' OR 'Low rainfall requires irrigation')"]
+      "reasoning": "With ${analysis.totalRainfall}mm rainfall and ${analysis.averageTemperature}°C, this crop...",
+      "benefits": ["Weather-matched benefit"],
+      "warnings": ["Weather risk if applicable"]
     }
   ],
-  "generalAdvice": "Critical farming tip for the ${analysis.totalRainfall}mm rainfall and ${analysis.averageTemperature}°C temperature forecast."
-}
-
-**Available Crops by Water Requirement:**
-- **High Water (>70mm rainfall):** Rice, Taro, Water-tolerant Maize varieties, Wetland crops
-- **Medium Water (40-70mm):** Maize, Beans, Groundnuts, Soybeans, Tomatoes, Cabbage, Onions, Rape
-- **Low Water (<40mm):** Cassava, Sweet Potato, Millet, Sorghum, Drought-tolerant Groundnuts
-
-**Available Crops by Temperature:**
-- **Hot (>28°C):** Cotton, Sunflower, Sorghum, Millet, Cassava, Sweet Potato
-- **Warm (20-28°C):** Maize, Beans, Groundnuts, Tomatoes, Most vegetables
-- **Cool (<20°C):** Cabbage, Peas, Irish Potatoes, Carrots
-
-**VALIDATION CHECK:**
-Before finalizing, verify each recommended crop:
-✓ Temperature range includes ${analysis.averageTemperature}°C
-✓ Water requirement matches ${analysis.totalRainfall}mm level (Low/Medium/High)
-✓ Suitability score reflects true weather alignment (not arbitrary)
-✓ Reasoning directly references the actual rainfall and temperature numbers
-
-Begin your analysis now. First identify if this is a WET or DRY period, then select ONLY crops suited to that condition. Return only the JSON.`;
+  "generalAdvice": "Key tip for ${analysis.totalRainfall}mm rainfall"
+}`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;

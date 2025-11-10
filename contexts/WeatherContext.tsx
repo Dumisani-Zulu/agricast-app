@@ -57,11 +57,14 @@ export const WeatherProvider: FC<WeatherProviderProps> = ({
       const data = await fetchWeather({ latitude: coords.latitude, longitude: coords.longitude, past_days: 14, forecast_days: 16 });
       console.log('✅ [WeatherProvider] Weather loaded for', defaultLocation);
 
-      console.log('🌾 [WeatherProvider] Prefetching crop recommendations...');
-      await prefetchCropRecommendations(data, defaultLocation);
-      console.log('✅ [WeatherProvider] Prefetch complete. System is ready.');
-
+      // Set ready immediately after weather loads - don't block on crop prefetch
       setState({ loading: false, data, coords, locationName: defaultLocation, isReady: true });
+
+      // Prefetch crops in background (non-blocking)
+      console.log('🌾 [WeatherProvider] Prefetching crop recommendations in background...');
+      prefetchCropRecommendations(data, defaultLocation)
+        .then(() => console.log('✅ [WeatherProvider] Background prefetch complete.'))
+        .catch((err) => console.warn('⚠️ [WeatherProvider] Background prefetch failed:', err.message));
     } catch (e: any) {
       console.error('❌ [WeatherProvider] Failed to load weather:', e.message);
       setState(s => ({ ...s, loading: false, error: e.message || 'Failed to load weather', isReady: false }));
@@ -75,11 +78,14 @@ export const WeatherProvider: FC<WeatherProviderProps> = ({
       const data = await fetchWeather({ latitude: coords.latitude, longitude: coords.longitude, past_days: 14, forecast_days: 16 });
       console.log('✅ [WeatherProvider] Weather loaded for', locationName);
 
-      console.log('🌾 [WeatherProvider] Prefetching crop recommendations for', locationName);
-      await prefetchCropRecommendations(data, locationName);
-      console.log('✅ [WeatherProvider] Prefetch complete for new location. System is ready.');
-
+      // Set ready immediately after weather loads - don't block on crop prefetch
       setState({ loading: false, data, coords, locationName, isReady: true });
+
+      // Prefetch crops in background (non-blocking)
+      console.log('🌾 [WeatherProvider] Prefetching crop recommendations for', locationName, 'in background...');
+      prefetchCropRecommendations(data, locationName)
+        .then(() => console.log('✅ [WeatherProvider] Background prefetch complete for new location.'))
+        .catch((err) => console.warn('⚠️ [WeatherProvider] Background prefetch failed:', err.message));
     } catch (e: any) {
       console.error('❌ [WeatherProvider] Failed to load weather:', e.message);
       setState(s => ({ ...s, loading: false, error: e.message || 'Failed to load weather', isReady: false }));
