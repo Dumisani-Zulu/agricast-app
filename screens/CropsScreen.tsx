@@ -14,6 +14,7 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
   const [recommendations, setRecommendations] = useState<CropRecommendationResponse | null>(null);
   const [cropLoading, setCropLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isQuickRecs, setIsQuickRecs] = useState(false); // Track if showing quick recommendations
 
   const loadRecommendations = useCallback(async () => {
     if (!weather.data || !weather.locationName) {
@@ -28,10 +29,28 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
     const startTime = Date.now();
     
     try {
-      // Use cache by default
-      const result = await getCropRecommendations(weather.data, weather.locationName, true);
-      setRecommendations(result);
-      console.log(`✨ [CropsScreen] Recommendations displayed in ${Date.now() - startTime}ms`);
+      // First check cache
+      const cached = await getCropRecommendations(weather.data, weather.locationName, true, false);
+      
+      // If not cached, show quick recommendations immediately
+      if (Date.now() - startTime < 100) {
+        // Was cached, just show it
+        setRecommendations(cached);
+        setIsQuickRecs(false);
+        console.log(`✨ [CropsScreen] Cached recommendations displayed in ${Date.now() - startTime}ms`);
+      } else {
+        // Not cached, get quick recs first
+        const quickRecs = await getCropRecommendations(weather.data, weather.locationName, false, true);
+        setRecommendations(quickRecs);
+        setIsQuickRecs(true);
+        console.log(`⚡ [CropsScreen] Quick recommendations displayed in ${Date.now() - startTime}ms`);
+        
+        // Then get AI recommendations in background
+        const aiRecs = await getCropRecommendations(weather.data, weather.locationName, false, false);
+        setRecommendations(aiRecs);
+        setIsQuickRecs(false);
+        console.log(`✨ [CropsScreen] AI recommendations displayed in ${Date.now() - startTime}ms`);
+      }
     } catch (err: any) {
       console.error('❌ [CropsScreen] Error loading recommendations:', err);
       setError(err.message || 'Failed to load crop recommendations');
@@ -294,12 +313,17 @@ const CropsScreen = ({ navigation }: CropsScreenProps) => {
           <Text className="text-white text-xl font-bold">
             Recommended Crops ({recommendations.recommendations.length})
           </Text>
-          {cropLoading && (
+          {isQuickRecs ? (
+            <View className="flex-row items-center bg-blue-900 px-2 py-1 rounded">
+              <MaterialCommunityIcons name="lightning-bolt" size={14} color="#60a5fa" />
+              <Text className="text-blue-300 text-xs ml-1">Quick View</Text>
+            </View>
+          ) : cropLoading ? (
             <View className="flex-row items-center">
               <ActivityIndicator size="small" color="#16a34a" />
               <Text className="text-gray-400 text-sm ml-2">Updating...</Text>
             </View>
-          )}
+          ) : null}
         </View>
         
         {recommendations.recommendations.map((rec, index) => (

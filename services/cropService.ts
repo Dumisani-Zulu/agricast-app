@@ -9,6 +9,110 @@ import { getAuth } from 'firebase/auth';
 const ongoingRequests: Map<string, Promise<CropRecommendationResponse>> = new Map();
 
 /**
+ * Get fast basic recommendations based on weather analysis
+ * Returns immediately without AI call for instant display
+ */
+const getQuickRecommendations = (
+  analysis: WeatherAnalysis,
+  locationName: string
+): CropRecommendationResponse => {
+  console.log('⚡ [CropService] Generating quick recommendations...');
+  
+  // Determine suitable crops based on rainfall and temperature
+  const { totalRainfall, averageTemperature, seasonType } = analysis;
+  
+  interface QuickCrop {
+    name: string;
+    id: string;
+    icon: string;
+    scientificName: string;
+    category: string;
+    score: number;
+    waterReq: string;
+    tempMin: number;
+    tempMax: number;
+  }
+  
+  const cropDatabase: QuickCrop[] = [
+    // High water crops
+    { name: 'Maize', id: 'maize', icon: '🌽', scientificName: 'Zea mays', category: 'Grain', score: 85, waterReq: 'Medium', tempMin: 18, tempMax: 32 },
+    { name: 'Rice', id: 'rice', icon: '🌾', scientificName: 'Oryza sativa', category: 'Grain', score: 80, waterReq: 'High', tempMin: 20, tempMax: 35 },
+    { name: 'Beans', id: 'beans', icon: '🫘', scientificName: 'Phaseolus vulgaris', category: 'Legume', score: 82, waterReq: 'Medium', tempMin: 15, tempMax: 30 },
+    { name: 'Groundnuts', id: 'groundnuts', icon: '🥜', scientificName: 'Arachis hypogaea', category: 'Legume', score: 83, waterReq: 'Low', tempMin: 20, tempMax: 30 },
+    
+    // Drought-tolerant crops
+    { name: 'Cassava', id: 'cassava', icon: '🌿', scientificName: 'Manihot esculenta', category: 'Root Crop', score: 88, waterReq: 'Low', tempMin: 18, tempMax: 35 },
+    { name: 'Sweet Potato', id: 'sweet-potato', icon: '🍠', scientificName: 'Ipomoea batatas', category: 'Root Crop', score: 86, waterReq: 'Low', tempMin: 18, tempMax: 32 },
+    { name: 'Millet', id: 'millet', icon: '🌾', scientificName: 'Pennisetum glaucum', category: 'Grain', score: 84, waterReq: 'Low', tempMin: 22, tempMax: 35 },
+    { name: 'Sorghum', id: 'sorghum', icon: '🌾', scientificName: 'Sorghum bicolor', category: 'Grain', score: 85, waterReq: 'Low', tempMin: 20, tempMax: 35 },
+    
+    // Vegetables
+    { name: 'Tomatoes', id: 'tomatoes', icon: '🍅', scientificName: 'Solanum lycopersicum', category: 'Vegetable', score: 80, waterReq: 'Medium', tempMin: 18, tempMax: 28 },
+    { name: 'Cabbage', id: 'cabbage', icon: '🥬', scientificName: 'Brassica oleracea', category: 'Vegetable', score: 78, waterReq: 'Medium', tempMin: 12, tempMax: 25 },
+    { name: 'Onions', id: 'onions', icon: '🧅', scientificName: 'Allium cepa', category: 'Vegetable', score: 79, waterReq: 'Medium', tempMin: 15, tempMax: 28 },
+    { name: 'Rape', id: 'rape', icon: '🥬', scientificName: 'Brassica napus', category: 'Vegetable', score: 77, waterReq: 'Medium', tempMin: 10, tempMax: 25 },
+  ];
+  
+  // Filter crops based on weather
+  const suitableCrops = cropDatabase.filter(crop => {
+    // Temperature check
+    if (averageTemperature < crop.tempMin || averageTemperature > crop.tempMax) return false;
+    
+    // Water requirement check
+    if (totalRainfall > 70 && crop.waterReq === 'Low') return false;
+    if (totalRainfall < 20 && crop.waterReq === 'High') return false;
+    if (totalRainfall < 40 && crop.waterReq === 'High') return false;
+    
+    return true;
+  });
+  
+  // Sort by score and take top 6
+  const topCrops = suitableCrops.sort((a, b) => b.score - a.score).slice(0, 6);
+  
+  const weatherSummary = totalRainfall > 50 
+    ? `Current conditions show ${totalRainfall}mm rainfall with ${averageTemperature}°C temperature - favorable for wet-season crops. ${seasonType === 'WET_SEASON' ? 'Rainy season is ideal for maize, beans, and vegetables.' : 'Moderate rainfall supports diverse crop selection.'}`
+    : `Dry conditions with ${totalRainfall}mm rainfall and ${averageTemperature}°C temperature. Focus on drought-resistant crops like cassava, millet, and sorghum for best results.`;
+  
+  const recommendations = topCrops.map(crop => ({
+    crop: {
+      id: crop.id,
+      name: crop.name,
+      scientificName: crop.scientificName,
+      category: crop.category,
+      description: `Well-suited for current ${totalRainfall}mm rainfall conditions`,
+      icon: crop.icon,
+      optimalTemperature: { min: crop.tempMin, max: crop.tempMax, unit: '°C' as const },
+      waterRequirement: crop.waterReq as 'Low' | 'Medium' | 'High',
+      growingSeasonDays: 90,
+      sunlightRequirement: 'Full Sun' as const,
+      soilType: ['Loamy', 'Well-drained'],
+      plantingDepth: '2-5cm',
+      spacing: '30cm x 60cm',
+      plantingTime: totalRainfall > 40 ? 'Rainy season' : 'With irrigation or at start of rains',
+      careInstructions: [`Water requirement: ${crop.waterReq}`, 'Regular weeding', 'Monitor for pests'],
+      commonPests: ['Aphids', 'Caterpillars'],
+      commonDiseases: ['Leaf spot', 'Root rot'],
+      harvestTime: '90-120 days after planting',
+      harvestYield: '2-4 tonnes/hectare',
+      storageInstructions: 'Store in cool, dry place',
+    },
+    suitabilityScore: crop.score,
+    reasoning: `With ${totalRainfall}mm rainfall and ${averageTemperature}°C temperature, this ${crop.waterReq.toLowerCase()}-water crop is well-suited to current conditions.`,
+    benefits: [`Suited to ${crop.waterReq.toLowerCase()} water availability`, 'Matches temperature range'],
+    warnings: totalRainfall < 30 && crop.waterReq !== 'Low' ? ['May require supplemental irrigation'] : [],
+  }));
+  
+  return {
+    locationName,
+    weatherSummary,
+    recommendations,
+    generalAdvice: totalRainfall > 40 
+      ? 'Take advantage of rainfall for planting water-responsive crops. Ensure good drainage.'
+      : 'Focus on drought-resistant varieties. Consider irrigation for optimal yields.',
+  };
+};
+
+/**
  * Analyze weather data to extract key metrics
  */
 export const analyzeWeatherData = (weatherData: WeatherData): WeatherAnalysis => {
@@ -75,12 +179,13 @@ export const analyzeWeatherData = (weatherData: WeatherData): WeatherAnalysis =>
 
 /**
  * Get crop recommendations based on weather data using Gemini AI
- * With caching and deduplication
+ * With caching, deduplication, and quick fallback
  */
 export const getCropRecommendations = async (
   weatherData: WeatherData,
   locationName: string,
-  useCache: boolean = true
+  useCache: boolean = true,
+  useQuickFallback: boolean = false // New parameter for instant recommendations
 ): Promise<CropRecommendationResponse> => {
   console.log(`🌾 [CropService] Getting crop recommendations for ${locationName}...`);
   
@@ -91,6 +196,14 @@ export const getCropRecommendations = async (
       console.log('⚡ [CropService] Returning cached recommendations (instant)');
       return cached;
     }
+  }
+  
+  // If quick fallback requested, return instant recommendations
+  if (useQuickFallback) {
+    const analysis = analyzeWeatherData(weatherData);
+    const quickRecs = getQuickRecommendations(analysis, locationName);
+    console.log('⚡ [CropService] Returning quick recommendations (instant)');
+    return quickRecs;
   }
   
   // Check if there's already a request in progress for this location
