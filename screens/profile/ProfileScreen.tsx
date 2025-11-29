@@ -135,6 +135,13 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
           />
           
           <MenuButton 
+            icon="heart-outline"
+            title="My Saved Items"
+            subtitle="View all saved crops, diseases & pests"
+            onPress={() => navigation.navigate('MySavedItems')}
+          />
+          
+          <MenuButton 
             icon="bookmark-outline"
             title="Saved Recommendations"
             subtitle="View your saved crop recommendations"

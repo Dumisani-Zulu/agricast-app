@@ -91,6 +91,41 @@ const deleteImageFromStorage = async (imageUri: string): Promise<void> => {
   }
 };
 
+// Check if a disease is already saved (by name and affected crop)
+export const isDiseaseAlreadySaved = async (diseaseName: string, affectedCrop: string): Promise<boolean> => {
+  try {
+    const existingData = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!existingData) return false;
+    
+    const savedIdentifications: SavedIdentification[] = JSON.parse(existingData);
+    return savedIdentifications.some(
+      item => item.type === 'disease' && 
+        (item as SavedDiseaseIdentification).diseaseName.toLowerCase() === diseaseName.toLowerCase() &&
+        (item as SavedDiseaseIdentification).affectedCrop.toLowerCase() === affectedCrop.toLowerCase()
+    );
+  } catch (error) {
+    console.error('Error checking for duplicate disease:', error);
+    return false;
+  }
+};
+
+// Check if a pest is already saved (by name)
+export const isPestAlreadySaved = async (pestName: string): Promise<boolean> => {
+  try {
+    const existingData = await AsyncStorage.getItem(STORAGE_KEY);
+    if (!existingData) return false;
+    
+    const savedIdentifications: SavedIdentification[] = JSON.parse(existingData);
+    return savedIdentifications.some(
+      item => item.type === 'pest' && 
+        (item as SavedPestIdentification).pestName.toLowerCase() === pestName.toLowerCase()
+    );
+  } catch (error) {
+    console.error('Error checking for duplicate pest:', error);
+    return false;
+  }
+};
+
 // Save a disease identification
 export const saveDiseaseIdentification = async (
   imageUri: string,
@@ -104,8 +139,15 @@ export const saveDiseaseIdentification = async (
     organicSolutions: string[];
     prevention: string[];
   }
-): Promise<void> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
+    // Check for duplicates
+    const isDuplicate = await isDiseaseAlreadySaved(result.diseaseName, result.affectedCrop);
+    if (isDuplicate) {
+      console.log('⚠️ Disease already saved:', result.diseaseName);
+      return { success: false, message: 'This disease identification is already saved.' };
+    }
+
     const existingData = await AsyncStorage.getItem(STORAGE_KEY);
     const savedIdentifications: SavedIdentification[] = existingData 
       ? JSON.parse(existingData) 
@@ -137,6 +179,7 @@ export const saveDiseaseIdentification = async (
     const limitedIdentifications = savedIdentifications.slice(0, 50);
     
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(limitedIdentifications));
+    return { success: true, message: 'Disease identification saved successfully!' };
   } catch (error) {
     console.error('Error saving disease identification:', error);
     throw error;
@@ -157,8 +200,15 @@ export const savePestIdentification = async (
     chemicalControl: string[];
     preventionMethods: string[];
   }
-): Promise<void> => {
+): Promise<{ success: boolean; message: string }> => {
   try {
+    // Check for duplicates
+    const isDuplicate = await isPestAlreadySaved(result.pestName);
+    if (isDuplicate) {
+      console.log('⚠️ Pest already saved:', result.pestName);
+      return { success: false, message: 'This pest identification is already saved.' };
+    }
+
     const existingData = await AsyncStorage.getItem(STORAGE_KEY);
     const savedIdentifications: SavedIdentification[] = existingData 
       ? JSON.parse(existingData) 
@@ -191,6 +241,7 @@ export const savePestIdentification = async (
     const limitedIdentifications = savedIdentifications.slice(0, 50);
     
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(limitedIdentifications));
+    return { success: true, message: 'Pest identification saved successfully!' };
   } catch (error) {
     console.error('Error saving pest identification:', error);
     throw error;

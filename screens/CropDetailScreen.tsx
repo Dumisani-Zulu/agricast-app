@@ -17,8 +17,12 @@ const CropDetailScreen = ({ route, navigation }: CropDetailScreenProps) => {
 
   const handleSave = async () => {
     try {
-      await saveCropRecommendation(crop);
-      Alert.alert('Success', 'Crop recommendation saved!');
+      const result = await saveCropRecommendation(crop);
+      if (result.success) {
+        Alert.alert('Success', result.message);
+      } else {
+        Alert.alert('Already Saved', result.message);
+      }
     } catch (error) {
       console.error("Failed to save crop:", error);
       Alert.alert('Error', 'There was a problem saving your crop. Please try again.');

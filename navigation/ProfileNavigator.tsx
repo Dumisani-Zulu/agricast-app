@@ -6,6 +6,7 @@ import PrivacySettingsScreen from '../screens/profile/PrivacySettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 import SavedRecommendationsScreen from '../screens/profile/SavedRecommendationsScreen';
 import SavedIdentificationsScreen from '../screens/profile/SavedIdentificationsScreen';
+import MySavedItemsScreen from '../screens/profile/MySavedItemsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ const ProfileNavigator = () => {
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} />
       <Stack.Screen name="SavedIdentifications" component={SavedIdentificationsScreen} />
+      <Stack.Screen name="MySavedItems" component={MySavedItemsScreen} />
     </Stack.Navigator>
   );
 };

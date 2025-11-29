@@ -463,7 +463,7 @@ Make it practical and specific for small-scale farmers.`;
   }
 };
 
-export const saveCropRecommendation = async (crop: Crop): Promise<void> => {
+export const saveCropRecommendation = async (crop: Crop): Promise<{ success: boolean; message: string }> => {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) {
@@ -475,6 +475,18 @@ export const saveCropRecommendation = async (crop: Crop): Promise<void> => {
 
   console.log(`💾 [CropService] Saving crop recommendation for user ${user.uid}...`);
   
+  // Check for duplicates first
+  const existingCrops = await getSavedCropRecommendations();
+  const isDuplicate = existingCrops.some(
+    existingCrop => existingCrop.id === crop.id || 
+      existingCrop.name.toLowerCase() === crop.name.toLowerCase()
+  );
+  
+  if (isDuplicate) {
+    console.log(`⚠️ [CropService] Crop already saved: ${crop.name}`);
+    return { success: false, message: 'This crop is already saved in your recommendations.' };
+  }
+  
   await updateDoc(userDocRef, {
     savedCrops: arrayUnion(crop)
   }).catch(async (error) => {
@@ -485,6 +497,7 @@ export const saveCropRecommendation = async (crop: Crop): Promise<void> => {
     }
   });
   console.log(`✅ [CropService] Crop recommendation saved successfully.`);
+  return { success: true, message: 'Crop saved to your recommendations!' };
 };
 
 export const getSavedCropRecommendations = async (): Promise<Crop[]> => {
@@ -507,4 +520,41 @@ export const getSavedCropRecommendations = async (): Promise<Crop[]> => {
     console.log(`ℹ️ [CropService] No saved crops found for this user.`);
     return [];
   }
+};
+
+// Delete a saved crop recommendation
+export const deleteSavedCropRecommendation = async (cropId: string): Promise<void> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const db = getFirestore();
+  const userDocRef = doc(db, 'users', user.uid);
+
+  console.log(`🗑️ [CropService] Deleting crop recommendation ${cropId} for user ${user.uid}...`);
+  
+  // Get current saved crops
+  const existingCrops = await getSavedCropRecommendations();
+  const filteredCrops = existingCrops.filter(crop => crop.id !== cropId && crop.name !== cropId);
+  
+  await setDoc(userDocRef, { savedCrops: filteredCrops }, { merge: true });
+  console.log(`✅ [CropService] Crop recommendation deleted successfully.`);
+};
+
+// Clear all saved crop recommendations
+export const clearAllSavedCropRecommendations = async (): Promise<void> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("User not authenticated");
+  }
+
+  const db = getFirestore();
+  const userDocRef = doc(db, 'users', user.uid);
+
+  console.log(`🗑️ [CropService] Clearing all saved crops for user ${user.uid}...`);
+  await setDoc(userDocRef, { savedCrops: [] }, { merge: true });
+  console.log(`✅ [CropService] All saved crops cleared successfully.`);
 };

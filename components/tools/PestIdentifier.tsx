@@ -195,12 +195,20 @@ Provide practical, locally-available solutions suitable for Zambian smallholder 
 
     setSaving(true);
     try {
-      await savePestIdentification(selectedImage, result);
-      Alert.alert(
-        'Saved Successfully',
-        'This pest identification has been saved to your profile for offline viewing.',
-        [{ text: 'OK' }]
-      );
+      const saveResult = await savePestIdentification(selectedImage, result);
+      if (saveResult.success) {
+        Alert.alert(
+          'Saved Successfully',
+          saveResult.message,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Already Saved',
+          saveResult.message,
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
       console.error('Error saving identification:', error);
       Alert.alert(
