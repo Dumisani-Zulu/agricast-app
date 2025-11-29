@@ -283,41 +283,87 @@ Return ONLY valid JSON (no markdown):
       console.log(`✅ [CropService] Gemini AI responded in ${Date.now() - aiStartTime}ms`);
       console.log('📄 [CropService] Raw AI response length:', text.length);
       
-      // Extract JSON from the response - handle markdown code blocks
+      // Extract JSON from the response - handle markdown code blocks and various formats
       let jsonText = text.trim();
       
-      // Remove markdown code blocks if present
-      if (jsonText.startsWith('```')) {
-        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // Remove markdown code blocks if present (various formats)
+      jsonText = jsonText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/\s*```$/i, '')
+        .trim();
+      
+      // Try multiple strategies to extract JSON
+      let jsonData = null;
+      
+      // Strategy 1: Try parsing the whole text as JSON
+      try {
+        jsonData = JSON.parse(jsonText);
+        console.log('🔍 [CropService] Parsed JSON directly');
+      } catch (e) {
+        // Strategy 2: Find JSON object using regex
+        const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            jsonData = JSON.parse(jsonMatch[0]);
+            console.log('🔍 [CropService] Parsed JSON via regex match');
+          } catch (e2) {
+            // Strategy 3: Try to fix common JSON issues
+            let fixedJson = jsonMatch[0]
+              .replace(/,\s*}/g, '}')  // Remove trailing commas before }
+              .replace(/,\s*]/g, ']')  // Remove trailing commas before ]
+              .replace(/'/g, '"')       // Replace single quotes with double quotes
+              .replace(/(\w+):/g, '"$1":') // Add quotes to unquoted keys
+              .replace(/""(\w+)":/g, '"$1":'); // Fix double-quoted keys
+            
+            try {
+              jsonData = JSON.parse(fixedJson);
+              console.log('🔍 [CropService] Parsed JSON after fixing common issues');
+            } catch (e3) {
+              console.error('❌ [CropService] JSON parsing failed after all strategies');
+              console.error('📄 [CropService] Raw response:', text.substring(0, 500));
+            }
+          }
+        }
       }
       
-      // Find JSON object
-      const jsonMatch = jsonText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        console.log('🔍 [CropService] Parsing JSON response...');
-        const jsonData = JSON.parse(jsonMatch[0]);
-        
+      if (jsonData && jsonData.recommendations) {
         const result = {
           locationName,
-          weatherSummary: jsonData.weatherSummary,
+          weatherSummary: jsonData.weatherSummary || `Weather analysis for ${locationName}`,
           recommendations: jsonData.recommendations,
-          generalAdvice: jsonData.generalAdvice,
+          generalAdvice: jsonData.generalAdvice || 'Follow local agricultural best practices.',
         };
         
         // Cache the result
         setCachedRecommendations(locationName, result);
         
         console.log(`✨ [CropService] Successfully generated ${result.recommendations.length} crop recommendations in ${Date.now() - startTime}ms`);
-        console.log('🌾 [CropService] Recommended crops:', result.recommendations.map((r: any) => r.crop.name).join(', '));
+        console.log('🌾 [CropService] Recommended crops:', result.recommendations.map((r: any) => r.crop?.name || r.name).join(', '));
         
         return result;
       }
       
-      throw new Error('Unable to parse AI response - no valid JSON found');
+      // If AI parsing failed, fall back to quick recommendations
+      console.warn('⚠️ [CropService] AI parsing failed, using quick fallback');
+      const quickRecs = getQuickRecommendations(analysis, locationName);
+      setCachedRecommendations(locationName, quickRecs);
+      return quickRecs;
     } catch (error) {
       console.error('❌ [CropService] Error getting crop recommendations:', error);
       console.error('⏱️ [CropService] Failed after', Date.now() - startTime, 'ms');
-      throw error;
+      
+      // Fall back to quick recommendations instead of throwing
+      console.warn('⚠️ [CropService] Using quick fallback due to error');
+      try {
+        const analysis = analyzeWeatherData(weatherData);
+        const quickRecs = getQuickRecommendations(analysis, locationName);
+        setCachedRecommendations(locationName, quickRecs);
+        return quickRecs;
+      } catch (fallbackError) {
+        console.error('❌ [CropService] Quick fallback also failed:', fallbackError);
+        throw error; // Throw original error if fallback fails
+      }
     } finally {
       // Remove from ongoing requests
       ongoingRequests.delete(cacheKey);

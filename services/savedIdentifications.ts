@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 
 export interface SavedDiseaseIdentification {
   id: string;
@@ -34,6 +35,61 @@ export interface SavedPestIdentification {
 export type SavedIdentification = SavedDiseaseIdentification | SavedPestIdentification;
 
 const STORAGE_KEY = '@agricast_saved_identifications';
+const IMAGE_DIR = `${FileSystem.documentDirectory}saved_identifications/`;
+
+// Ensure the image directory exists
+const ensureImageDirectory = async (): Promise<void> => {
+  const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIR);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(IMAGE_DIR, { intermediates: true });
+  }
+};
+
+// Save image to persistent storage and return the new URI
+const saveImageToPersistentStorage = async (sourceUri: string, id: string): Promise<string> => {
+  try {
+    await ensureImageDirectory();
+    
+    // Extract file extension from source URI
+    const extension = sourceUri.split('.').pop()?.split('?')[0] || 'jpg';
+    const fileName = `${id}.${extension}`;
+    const destUri = `${IMAGE_DIR}${fileName}`;
+    
+    // Check if source file exists
+    const sourceInfo = await FileSystem.getInfoAsync(sourceUri);
+    if (!sourceInfo.exists) {
+      console.warn('Source image does not exist:', sourceUri);
+      return sourceUri; // Return original URI as fallback
+    }
+    
+    // Copy the image to persistent storage
+    await FileSystem.copyAsync({
+      from: sourceUri,
+      to: destUri,
+    });
+    
+    console.log('Image saved to persistent storage:', destUri);
+    return destUri;
+  } catch (error) {
+    console.error('Error saving image to persistent storage:', error);
+    return sourceUri; // Return original URI as fallback
+  }
+};
+
+// Delete image from persistent storage
+const deleteImageFromStorage = async (imageUri: string): Promise<void> => {
+  try {
+    if (imageUri.startsWith(IMAGE_DIR)) {
+      const fileInfo = await FileSystem.getInfoAsync(imageUri);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(imageUri);
+        console.log('Image deleted from persistent storage:', imageUri);
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting image from storage:', error);
+  }
+};
 
 // Save a disease identification
 export const saveDiseaseIdentification = async (
@@ -55,10 +111,15 @@ export const saveDiseaseIdentification = async (
       ? JSON.parse(existingData) 
       : [];
 
+    const id = `disease_${Date.now()}`;
+    
+    // Save image to persistent storage
+    const persistentImageUri = await saveImageToPersistentStorage(imageUri, id);
+
     const newIdentification: SavedDiseaseIdentification = {
-      id: `disease_${Date.now()}`,
+      id,
       type: 'disease',
-      imageUri,
+      imageUri: persistentImageUri,
       timestamp: new Date().toISOString(),
       diseaseName: result.diseaseName,
       confidence: result.confidence,
@@ -103,10 +164,15 @@ export const savePestIdentification = async (
       ? JSON.parse(existingData) 
       : [];
 
+    const id = `pest_${Date.now()}`;
+    
+    // Save image to persistent storage
+    const persistentImageUri = await saveImageToPersistentStorage(imageUri, id);
+
     const newIdentification: SavedPestIdentification = {
-      id: `pest_${Date.now()}`,
+      id,
       type: 'pest',
-      imageUri,
+      imageUri: persistentImageUri,
       timestamp: new Date().toISOString(),
       pestName: result.pestName,
       scientificName: result.scientificName,
@@ -149,6 +215,13 @@ export const deleteSavedIdentification = async (id: string): Promise<void> => {
     if (!existingData) return;
 
     const savedIdentifications: SavedIdentification[] = JSON.parse(existingData);
+    
+    // Find the identification to delete and remove its image
+    const toDelete = savedIdentifications.find(item => item.id === id);
+    if (toDelete) {
+      await deleteImageFromStorage(toDelete.imageUri);
+    }
+    
     const filtered = savedIdentifications.filter(item => item.id !== id);
     
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
@@ -161,6 +234,25 @@ export const deleteSavedIdentification = async (id: string): Promise<void> => {
 // Clear all saved identifications
 export const clearAllSavedIdentifications = async (): Promise<void> => {
   try {
+    // Delete all images first
+    const existingData = await AsyncStorage.getItem(STORAGE_KEY);
+    if (existingData) {
+      const savedIdentifications: SavedIdentification[] = JSON.parse(existingData);
+      for (const identification of savedIdentifications) {
+        await deleteImageFromStorage(identification.imageUri);
+      }
+    }
+    
+    // Remove the entire image directory if it exists
+    try {
+      const dirInfo = await FileSystem.getInfoAsync(IMAGE_DIR);
+      if (dirInfo.exists) {
+        await FileSystem.deleteAsync(IMAGE_DIR);
+      }
+    } catch (e) {
+      console.warn('Failed to delete image directory:', e);
+    }
+    
     await AsyncStorage.removeItem(STORAGE_KEY);
   } catch (error) {
     console.error('Error clearing saved identifications:', error);
