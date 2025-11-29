@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, LayoutAnimation, Platform, UIManager, ImageStyle, StyleProp } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, ImageStyle, StyleProp } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
@@ -16,11 +16,6 @@ import {
   clearAllSavedCropRecommendations 
 } from '../../services/cropService';
 import { Crop } from '../../types/crop';
-
-// Enable LayoutAnimation for Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 // Image component with fallback for missing images
 const ImageWithFallback = ({ uri, style, type }: { uri: string; style?: StyleProp<ImageStyle>; type: 'disease' | 'pest' }) => {
@@ -60,7 +55,6 @@ const MySavedItemsScreen = ({ navigation }: any) => {
   const [crops, setCrops] = useState<Crop[]>([]);
   const [identifications, setIdentifications] = useState<SavedIdentification[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   const loadData = async () => {
     setLoading(true);
@@ -83,19 +77,6 @@ const MySavedItemsScreen = ({ navigation }: any) => {
       loadData();
     }, [])
   );
-
-  const toggleExpand = (id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedIds(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
-      }
-      return newSet;
-    });
-  };
 
   const diseases = identifications.filter(i => i.type === 'disease') as SavedDiseaseIdentification[];
   const pests = identifications.filter(i => i.type === 'pest') as SavedPestIdentification[];
@@ -191,36 +172,45 @@ const MySavedItemsScreen = ({ navigation }: any) => {
   };
 
   const renderCropCard = (crop: Crop) => (
-    <View key={crop.id || crop.name} className="bg-gray-800 p-4 rounded-xl mb-3 flex-row items-center">
-      <TouchableOpacity 
-        className="flex-row items-center flex-1"
-        onPress={() => navigation.navigate('Crops', { screen: 'CropDetail', params: { crop } })}
-      >
-        <View className="bg-green-900/30 rounded-lg p-3 mr-3">
-          <Text className="text-2xl">{crop.icon}</Text>
-        </View>
-        <View className="flex-1">
-          <Text className="text-white text-lg font-bold">{crop.name}</Text>
-          <Text className="text-gray-400 text-sm">{crop.category}</Text>
-          <Text className="text-green-400 text-xs mt-1">
-            {crop.waterRequirement} water • {crop.growingSeasonDays} days
-          </Text>
-        </View>
-      </TouchableOpacity>
-      <TouchableOpacity 
-        onPress={() => handleDeleteCrop(crop)}
-        className="bg-red-600/20 p-2 rounded-lg"
-      >
-        <MaterialCommunityIcons name="delete" size={22} color="#ef4444" />
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity 
+      key={crop.id || crop.name} 
+      className="bg-gray-800 p-4 rounded-xl mb-3 flex-row items-center"
+      onPress={() => navigation.navigate('SavedCropDetail', { crop })}
+      activeOpacity={0.7}
+    >
+      <View className="bg-green-900/30 rounded-lg p-3 mr-3">
+        <Text className="text-2xl">{crop.icon}</Text>
+      </View>
+      <View className="flex-1">
+        <Text className="text-white text-lg font-bold">{crop.name}</Text>
+        <Text className="text-gray-400 text-sm">{crop.category}</Text>
+        <Text className="text-green-400 text-xs mt-1">
+          {crop.waterRequirement} water • {crop.growingSeasonDays} days
+        </Text>
+      </View>
+      <View className="flex-row items-center">
+        <TouchableOpacity 
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDeleteCrop(crop);
+          }}
+          className="bg-red-600/20 p-2 rounded-lg mr-2"
+        >
+          <MaterialCommunityIcons name="delete" size={22} color="#ef4444" />
+        </TouchableOpacity>
+        <MaterialCommunityIcons name="chevron-right" size={24} color="#6b7280" />
+      </View>
+    </TouchableOpacity>
   );
 
   const renderDiseaseCard = (item: SavedDiseaseIdentification) => {
-    const isExpanded = expandedIds.has(item.id);
-    
     return (
-      <View key={item.id} className="bg-gray-800 rounded-xl p-4 mb-3">
+      <TouchableOpacity 
+        key={item.id} 
+        className="bg-gray-800 rounded-xl p-4 mb-3"
+        onPress={() => navigation.navigate('SavedDiseaseDetail', { disease: item })}
+        activeOpacity={0.7}
+      >
         <View className="flex-row items-start">
           <ImageWithFallback 
             uri={item.imageUri} 
@@ -233,12 +223,18 @@ const MySavedItemsScreen = ({ navigation }: any) => {
                 <MaterialCommunityIcons name="leaf" size={16} color="#22c55e" />
                 <Text className="text-green-400 text-xs ml-1">Disease</Text>
               </View>
-              <TouchableOpacity 
-                onPress={() => handleDeleteIdentification(item.id, item.diseaseName)}
-                className="bg-red-600/20 p-1.5 rounded"
-              >
-                <MaterialCommunityIcons name="delete" size={18} color="#ef4444" />
-              </TouchableOpacity>
+              <View className="flex-row items-center">
+                <TouchableOpacity 
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteIdentification(item.id, item.diseaseName);
+                  }}
+                  className="bg-red-600/20 p-1.5 rounded mr-1"
+                >
+                  <MaterialCommunityIcons name="delete" size={18} color="#ef4444" />
+                </TouchableOpacity>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#6b7280" />
+              </View>
             </View>
             <Text className="text-white font-bold text-lg mt-1">{item.diseaseName}</Text>
             <Text className="text-gray-400 text-sm">{item.affectedCrop}</Text>
@@ -251,51 +247,22 @@ const MySavedItemsScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {isExpanded && (
-          <View className="mt-3 pt-3 border-t border-gray-700">
-            {item.symptoms.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Symptoms:</Text>
-                <Text className="text-gray-300 text-sm">{item.symptoms.join(', ')}</Text>
-              </View>
-            )}
-            {item.treatment.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Treatment:</Text>
-                <Text className="text-gray-300 text-sm">{item.treatment.join(', ')}</Text>
-              </View>
-            )}
-            {item.organicSolutions?.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Organic Solutions:</Text>
-                <Text className="text-gray-300 text-sm">{item.organicSolutions.join(', ')}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        <TouchableOpacity 
-          onPress={() => toggleExpand(item.id)}
-          className="flex-row items-center justify-center py-2 mt-2 border-t border-gray-700"
-        >
-          <Text className="text-green-400 font-semibold text-sm mr-1">
-            {isExpanded ? 'Less' : 'More'}
-          </Text>
-          <MaterialCommunityIcons 
-            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-            size={18} 
-            color="#22c55e" 
-          />
-        </TouchableOpacity>
-      </View>
+        <View className="flex-row items-center justify-center pt-3 mt-3 border-t border-gray-700">
+          <Text className="text-green-400 text-sm">Tap to view details</Text>
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#22c55e" className="ml-1" />
+        </View>
+      </TouchableOpacity>
     );
   };
 
   const renderPestCard = (item: SavedPestIdentification) => {
-    const isExpanded = expandedIds.has(item.id);
-    
     return (
-      <View key={item.id} className="bg-gray-800 rounded-xl p-4 mb-3">
+      <TouchableOpacity 
+        key={item.id} 
+        className="bg-gray-800 rounded-xl p-4 mb-3"
+        onPress={() => navigation.navigate('SavedPestDetail', { pest: item })}
+        activeOpacity={0.7}
+      >
         <View className="flex-row items-start">
           <ImageWithFallback 
             uri={item.imageUri} 
@@ -308,12 +275,18 @@ const MySavedItemsScreen = ({ navigation }: any) => {
                 <MaterialCommunityIcons name="bug" size={16} color="#fbbf24" />
                 <Text className="text-yellow-400 text-xs ml-1">Pest</Text>
               </View>
-              <TouchableOpacity 
-                onPress={() => handleDeleteIdentification(item.id, item.pestName)}
-                className="bg-red-600/20 p-1.5 rounded"
-              >
-                <MaterialCommunityIcons name="delete" size={18} color="#ef4444" />
-              </TouchableOpacity>
+              <View className="flex-row items-center">
+                <TouchableOpacity 
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteIdentification(item.id, item.pestName);
+                  }}
+                  className="bg-red-600/20 p-1.5 rounded mr-1"
+                >
+                  <MaterialCommunityIcons name="delete" size={18} color="#ef4444" />
+                </TouchableOpacity>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#6b7280" />
+              </View>
             </View>
             <Text className="text-white font-bold text-lg mt-1">{item.pestName}</Text>
             <Text className="text-gray-400 text-sm italic">{item.scientificName}</Text>
@@ -326,49 +299,11 @@ const MySavedItemsScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {isExpanded && (
-          <View className="mt-3 pt-3 border-t border-gray-700">
-            {item.affectedCrops.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Affected Crops:</Text>
-                <View className="flex-row flex-wrap">
-                  {item.affectedCrops.map((crop, i) => (
-                    <View key={i} className="bg-yellow-900/30 border border-yellow-700 rounded px-2 py-0.5 mr-1 mb-1">
-                      <Text className="text-yellow-300 text-xs">{crop}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-            {item.biologicalControl?.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Biological Control:</Text>
-                <Text className="text-gray-300 text-sm">{item.biologicalControl.join(', ')}</Text>
-              </View>
-            )}
-            {item.chemicalControl?.length > 0 && (
-              <View className="mb-2">
-                <Text className="text-gray-400 text-xs mb-1">Chemical Control:</Text>
-                <Text className="text-gray-300 text-sm">{item.chemicalControl.join(', ')}</Text>
-              </View>
-            )}
-          </View>
-        )}
-
-        <TouchableOpacity 
-          onPress={() => toggleExpand(item.id)}
-          className="flex-row items-center justify-center py-2 mt-2 border-t border-gray-700"
-        >
-          <Text className="text-yellow-400 font-semibold text-sm mr-1">
-            {isExpanded ? 'Less' : 'More'}
-          </Text>
-          <MaterialCommunityIcons 
-            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
-            size={18} 
-            color="#fbbf24" 
-          />
-        </TouchableOpacity>
-      </View>
+        <View className="flex-row items-center justify-center pt-3 mt-3 border-t border-gray-700">
+          <Text className="text-yellow-400 text-sm">Tap to view details</Text>
+          <MaterialCommunityIcons name="arrow-right" size={16} color="#fbbf24" className="ml-1" />
+        </View>
+      </TouchableOpacity>
     );
   };
 

@@ -7,6 +7,9 @@ import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
 import SavedRecommendationsScreen from '../screens/profile/SavedRecommendationsScreen';
 import SavedIdentificationsScreen from '../screens/profile/SavedIdentificationsScreen';
 import MySavedItemsScreen from '../screens/profile/MySavedItemsScreen';
+import SavedCropDetailScreen from '../screens/profile/SavedCropDetailScreen';
+import SavedDiseaseDetailScreen from '../screens/profile/SavedDiseaseDetailScreen';
+import SavedPestDetailScreen from '../screens/profile/SavedPestDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +29,9 @@ const ProfileNavigator = () => {
       <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} />
       <Stack.Screen name="SavedIdentifications" component={SavedIdentificationsScreen} />
       <Stack.Screen name="MySavedItems" component={MySavedItemsScreen} />
+      <Stack.Screen name="SavedCropDetail" component={SavedCropDetailScreen} />
+      <Stack.Screen name="SavedDiseaseDetail" component={SavedDiseaseDetailScreen} />
+      <Stack.Screen name="SavedPestDetail" component={SavedPestDetailScreen} />
     </Stack.Navigator>
   );
 };
