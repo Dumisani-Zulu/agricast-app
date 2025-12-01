@@ -162,19 +162,19 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
             onPress={() => navigation.navigate('MySavedItems')}
           />
           
-          <MenuButton 
+          {/* <MenuButton 
             icon="bookmark-outline"
             title="Saved Recommendations"
             subtitle="View your saved crop recommendations"
             onPress={() => navigation.navigate('SavedRecommendations')}
-          />
+          /> */}
           
-          <MenuButton 
+          {/* <MenuButton 
             icon="folder-open-outline"
             title="Saved Identifications"
             subtitle="View saved diseases and pests (offline)"
             onPress={() => navigation.navigate('SavedIdentifications')}
-          />
+          /> */}
           
           <MenuButton 
             icon="notifications-outline" 

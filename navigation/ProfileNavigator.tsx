@@ -26,8 +26,8 @@ const ProfileNavigator = () => {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-      <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} />
-      <Stack.Screen name="SavedIdentifications" component={SavedIdentificationsScreen} />
+      {/* <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} /> */}
+      {/* <Stack.Screen name="SavedIdentifications" component={SavedIdentificationsScreen} /> */}
       <Stack.Screen name="MySavedItems" component={MySavedItemsScreen} />
       <Stack.Screen name="SavedCropDetail" component={SavedCropDetailScreen} />
       <Stack.Screen name="SavedDiseaseDetail" component={SavedDiseaseDetailScreen} />
