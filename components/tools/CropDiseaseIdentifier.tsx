@@ -1,9 +1,28 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Image, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, Alert, Image, ScrollView, ActivityIndicator, Platform, AlertButton } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { geminiModels } from '../../config/gemini';
 import { saveDiseaseIdentification } from '../../services/savedIdentifications';
+
+// Cross-platform alert helper
+const showAlert = (title: string, message: string, buttons?: AlertButton[]) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed && buttons[1]?.onPress) {
+        buttons[1].onPress();
+      } else if (!confirmed && buttons[0]?.onPress) {
+        buttons[0].onPress();
+      }
+    } else {
+      window.alert(`${title}\n\n${message}`);
+      if (buttons?.[0]?.onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+};
 
 interface DiseaseResult {
   diseaseName: string;
@@ -26,13 +45,16 @@ const CropDiseaseIdentifier = () => {
   const [result, setResult] = useState<DiseaseResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const requestPermissions = async () => {
+    if (Platform.OS === 'web') return true; // Web doesn't need permissions
+    
     const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
     const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (cameraStatus !== 'granted' || mediaStatus !== 'granted') {
-      Alert.alert(
+      showAlert(
         'Permissions Required',
         'Camera and gallery permissions are needed to identify crop diseases.',
         [{ text: 'OK' }]
@@ -40,6 +62,27 @@ const CropDiseaseIdentifier = () => {
       return false;
     }
     return true;
+  };
+
+  // Web file input handler
+  const handleWebFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const imageUri = e.target?.result as string;
+        setSelectedImage(imageUri);
+        await analyzeImage(imageUri);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error selecting file:', error);
+      showAlert('Error', 'Failed to select image. Please try again.');
+    }
+    // Reset input so same file can be selected again
+    if (event.target) event.target.value = '';
   };
 
   const analyzeImage = async (uri: string) => {
@@ -118,7 +161,7 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
     } catch (err) {
       console.error('Error analyzing image:', err);
       setError('Failed to analyze image. Please try again with a clearer photo of the crop.');
-      Alert.alert(
+      showAlert(
         'Analysis Failed',
         'Could not analyze the image. Please ensure you have a clear photo of a crop plant and try again.',
         [{ text: 'OK' }]
@@ -129,6 +172,16 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
   };
 
   const handleImageCapture = async () => {
+    // Web: use file input with capture attribute
+    if (Platform.OS === 'web') {
+      if (fileInputRef.current) {
+        fileInputRef.current.accept = 'image/*';
+        fileInputRef.current.capture = 'environment';
+        fileInputRef.current.click();
+      }
+      return;
+    }
+
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -147,11 +200,21 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
       }
     } catch (error) {
       console.error('Error capturing image:', error);
-      Alert.alert('Error', 'Failed to capture image. Please try again.');
+      showAlert('Error', 'Failed to capture image. Please try again.');
     }
   };
 
   const handleImageGallery = async () => {
+    // Web: use file input
+    if (Platform.OS === 'web') {
+      if (fileInputRef.current) {
+        fileInputRef.current.accept = 'image/*';
+        fileInputRef.current.removeAttribute('capture');
+        fileInputRef.current.click();
+      }
+      return;
+    }
+
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
@@ -170,7 +233,7 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
       }
     } catch (error) {
       console.error('Error selecting image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
+      showAlert('Error', 'Failed to select image. Please try again.');
     }
   };
 
@@ -188,13 +251,13 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
     try {
       const saveResult = await saveDiseaseIdentification(selectedImage, result);
       if (saveResult.success) {
-        Alert.alert(
+        showAlert(
           'Saved Successfully',
           saveResult.message,
           [{ text: 'OK' }]
         );
       } else {
-        Alert.alert(
+        showAlert(
           'Already Saved',
           saveResult.message,
           [{ text: 'OK' }]
@@ -202,7 +265,7 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
       }
     } catch (error) {
       console.error('Error saving identification:', error);
-      Alert.alert(
+      showAlert(
         'Save Failed',
         'Could not save this identification. Please try again.',
         [{ text: 'OK' }]
@@ -234,6 +297,17 @@ Provide practical, locally-available solutions suitable for Zambian farmers.`;
 
   return (
     <View className="flex-1 bg-gray-900">
+      {/* Hidden file input for web */}
+      {Platform.OS === 'web' && (
+        <input
+          ref={fileInputRef as any}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleWebFileSelect as any}
+        />
+      )}
+      
       <ScrollView className="flex-1 p-4">
         
         {/* Header Card */}

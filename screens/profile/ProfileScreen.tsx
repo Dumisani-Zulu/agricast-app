@@ -6,10 +6,31 @@ import {
   TouchableOpacity, 
   SafeAreaView, 
   StatusBar,
-  Alert 
+  Alert,
+  Platform,
+  AlertButton
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+
+// Cross-platform alert helper
+const showAlert = (title: string, message: string, buttons?: AlertButton[]) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed && buttons[1]?.onPress) {
+        buttons[1].onPress();
+      } else if (!confirmed && buttons[0]?.onPress) {
+        buttons[0].onPress();
+      }
+    } else {
+      window.alert(`${title}\n\n${message}`);
+      if (buttons?.[0]?.onPress) buttons[0].onPress();
+    }
+  } else {
+    Alert.alert(title, message, buttons);
+  }
+};
 
 const ProfileScreen = ({ navigation }: { navigation?: any }) => {
   const { user, logout } = useAuth();
@@ -28,12 +49,12 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
     if (navigation) {
       navigation.navigate('EditProfile');
     } else {
-      Alert.alert('Edit Profile', 'Profile editing functionality coming soon!');
+      showAlert('Edit Profile', 'Profile editing functionality coming soon!');
     }
   };
 
   const handleLogout = () => {
-    Alert.alert(
+    showAlert(
       'Logout',
       'Are you sure you want to logout?',
       [
@@ -45,7 +66,7 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
             try {
               await logout();
             } catch {
-              Alert.alert('Error', 'Failed to logout. Please try again.');
+              showAlert('Error', 'Failed to logout. Please try again.');
             }
           }
         }
@@ -163,7 +184,7 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
               if (navigation) {
                 navigation.navigate('Notifications');
               } else {
-                Alert.alert('Notifications', 'Coming soon!');
+                showAlert('Notifications', 'Coming soon!');
               }
             }}
           />
@@ -176,7 +197,7 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
               if (navigation) {
                 navigation.navigate('PrivacySettings');
               } else {
-                Alert.alert('Privacy', 'Coming soon!');
+                showAlert('Privacy', 'Coming soon!');
               }
             }}
           />
@@ -189,7 +210,7 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
               if (navigation) {
                 navigation.navigate('HelpSupport');
               } else {
-                Alert.alert('Help', 'Coming soon!');
+                showAlert('Help', 'Coming soon!');
               }
             }}
           />
@@ -198,7 +219,7 @@ const ProfileScreen = ({ navigation }: { navigation?: any }) => {
             icon="information-circle-outline" 
             title="About" 
             subtitle="App version and information"
-            onPress={() => Alert.alert('About', 'FarmApp v1.0.0')}
+            onPress={() => showAlert('About', 'FarmApp v1.0.0')}
           />
         </View>
 
