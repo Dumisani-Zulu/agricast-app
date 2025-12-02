@@ -4,6 +4,18 @@ import { CropRecommendationResponse, WeatherAnalysis, Crop } from '../types/crop
 import { getCachedRecommendations, setCachedRecommendations } from './cropCache';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import {
+  getOfflineSavedCrops,
+  setOfflineSavedCrops,
+  addCropToOfflineStorage,
+  deleteCropFromOfflineStorage,
+  clearOfflineSavedCrops,
+  getPendingSyncs,
+  clearPendingSyncs,
+  setLastSyncTime,
+  isOnline,
+  isSyncNeeded,
+} from './offlineStorage';
 
 // Track ongoing requests to prevent duplicates
 const ongoingRequests: Map<string, Promise<CropRecommendationResponse>> = new Map();
@@ -464,97 +476,249 @@ Make it practical and specific for small-scale farmers.`;
 };
 
 export const saveCropRecommendation = async (crop: Crop): Promise<{ success: boolean; message: string }> => {
+  // Always save to offline storage first
+  const offlineResult = await addCropToOfflineStorage(crop);
+  if (!offlineResult.success) {
+    return offlineResult; // Already saved (duplicate)
+  }
+
+  // Try to sync with Firebase if online and authenticated
   const auth = getAuth();
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("User not authenticated");
-  }
+  
+  if (user && await isOnline()) {
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, 'users', user.uid);
 
-  const db = getFirestore();
-  const userDocRef = doc(db, 'users', user.uid);
-
-  console.log(`💾 [CropService] Saving crop recommendation for user ${user.uid}...`);
-  
-  // Check for duplicates first
-  const existingCrops = await getSavedCropRecommendations();
-  const isDuplicate = existingCrops.some(
-    existingCrop => existingCrop.id === crop.id || 
-      existingCrop.name.toLowerCase() === crop.name.toLowerCase()
-  );
-  
-  if (isDuplicate) {
-    console.log(`⚠️ [CropService] Crop already saved: ${crop.name}`);
-    return { success: false, message: 'This crop is already saved in your recommendations.' };
-  }
-  
-  await updateDoc(userDocRef, {
-    savedCrops: arrayUnion(crop)
-  }).catch(async (error) => {
-    if (error.code === 'not-found') {
-      await setDoc(userDocRef, { savedCrops: [crop] });
-    } else {
-      throw error;
+      console.log(`💾 [CropService] Syncing crop to Firebase for user ${user.uid}...`);
+      
+      await updateDoc(userDocRef, {
+        savedCrops: arrayUnion(crop)
+      }).catch(async (error) => {
+        if (error.code === 'not-found') {
+          await setDoc(userDocRef, { savedCrops: [crop] });
+        } else {
+          throw error;
+        }
+      });
+      
+      console.log(`✅ [CropService] Crop synced to Firebase successfully.`);
+      await setLastSyncTime();
+    } catch (error) {
+      console.warn('⚠️ [CropService] Firebase sync failed, will retry later:', error);
+      // Crop is already saved offline, so return success
     }
-  });
-  console.log(`✅ [CropService] Crop recommendation saved successfully.`);
-  return { success: true, message: 'Crop saved to your recommendations!' };
+  } else {
+    console.log('📱 [CropService] Saved offline (will sync when online)');
+  }
+  
+  return { success: true, message: 'Crop saved successfully!' };
 };
 
 export const getSavedCropRecommendations = async (): Promise<Crop[]> => {
   const auth = getAuth();
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("User not authenticated");
+  
+  // Get offline crops first (always available)
+  const offlineCrops = await getOfflineSavedCrops();
+  
+  // If not authenticated or offline, return offline data
+  if (!user || !(await isOnline())) {
+    console.log(`📱 [CropService] Returning ${offlineCrops.length} offline saved crops`);
+    return offlineCrops;
   }
+  
+  // Check if sync is needed
+  const needsSync = await isSyncNeeded();
+  
+  if (needsSync) {
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, 'users', user.uid);
 
+      console.log(`📂 [CropService] Fetching saved crops from Firebase for user ${user.uid}...`);
+      const docSnap = await getDoc(userDocRef);
+
+      if (docSnap.exists() && docSnap.data().savedCrops) {
+        const firebaseCrops = docSnap.data().savedCrops as Crop[];
+        console.log(`✅ [CropService] Found ${firebaseCrops.length} crops in Firebase.`);
+        
+        // Merge offline and Firebase crops (deduplicate)
+        const mergedCrops = mergeCrops(offlineCrops, firebaseCrops);
+        
+        // Update offline storage with merged data
+        await setOfflineSavedCrops(mergedCrops);
+        
+        // Process any pending sync operations
+        await processPendingSyncs();
+        
+        await setLastSyncTime();
+        return mergedCrops;
+      }
+    } catch (error) {
+      console.warn('⚠️ [CropService] Firebase fetch failed, returning offline data:', error);
+    }
+  }
+  
+  return offlineCrops;
+};
+
+/**
+ * Merge offline and Firebase crops, removing duplicates
+ */
+const mergeCrops = (offlineCrops: Crop[], firebaseCrops: Crop[]): Crop[] => {
+  const cropMap = new Map<string, Crop>();
+  
+  // Add Firebase crops first
+  for (const crop of firebaseCrops) {
+    const key = crop.id || crop.name.toLowerCase();
+    cropMap.set(key, crop);
+  }
+  
+  // Add/overwrite with offline crops (they may be newer)
+  for (const crop of offlineCrops) {
+    const key = crop.id || crop.name.toLowerCase();
+    cropMap.set(key, crop);
+  }
+  
+  return Array.from(cropMap.values());
+};
+
+/**
+ * Process pending sync operations
+ */
+const processPendingSyncs = async (): Promise<void> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  
+  if (!user || !(await isOnline())) return;
+  
+  const pendingSyncs = await getPendingSyncs();
+  if (pendingSyncs.length === 0) return;
+  
+  console.log(`🔄 [CropService] Processing ${pendingSyncs.length} pending syncs...`);
+  
   const db = getFirestore();
   const userDocRef = doc(db, 'users', user.uid);
-
-  console.log(`📂 [CropService] Fetching saved crop recommendations for user ${user.uid}...`);
-  const docSnap = await getDoc(userDocRef);
-
-  if (docSnap.exists() && docSnap.data().savedCrops) {
-    console.log(`✅ [CropService] Found ${docSnap.data().savedCrops.length} saved crops.`);
-    return docSnap.data().savedCrops as Crop[];
-  } else {
-    console.log(`ℹ️ [CropService] No saved crops found for this user.`);
-    return [];
+  
+  try {
+    // Get current Firebase state
+    const docSnap = await getDoc(userDocRef);
+    let firebaseCrops: Crop[] = [];
+    if (docSnap.exists() && docSnap.data().savedCrops) {
+      firebaseCrops = docSnap.data().savedCrops as Crop[];
+    }
+    
+    // Apply pending operations
+    for (const sync of pendingSyncs) {
+      if (sync.type === 'add' && sync.crop) {
+        const exists = firebaseCrops.some(c => c.id === sync.crop!.id || c.name === sync.crop!.name);
+        if (!exists) {
+          firebaseCrops.push(sync.crop);
+        }
+      } else if (sync.type === 'delete' && sync.cropId) {
+        firebaseCrops = firebaseCrops.filter(c => c.id !== sync.cropId && c.name !== sync.cropId);
+      } else if (sync.type === 'clear') {
+        firebaseCrops = [];
+      }
+    }
+    
+    // Save updated crops to Firebase
+    await setDoc(userDocRef, { savedCrops: firebaseCrops }, { merge: true });
+    
+    // Clear pending syncs
+    await clearPendingSyncs();
+    
+    console.log(`✅ [CropService] Pending syncs processed successfully`);
+  } catch (error) {
+    console.error('❌ [CropService] Error processing pending syncs:', error);
   }
 };
 
 // Delete a saved crop recommendation
 export const deleteSavedCropRecommendation = async (cropId: string): Promise<void> => {
+  // Delete from offline storage first
+  await deleteCropFromOfflineStorage(cropId);
+  
+  // Try to sync with Firebase if online
   const auth = getAuth();
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("User not authenticated");
+  
+  if (user && await isOnline()) {
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, 'users', user.uid);
+
+      console.log(`🗑️ [CropService] Syncing deletion to Firebase for ${cropId}...`);
+      
+      // Get current saved crops from Firebase
+      const docSnap = await getDoc(userDocRef);
+      if (docSnap.exists() && docSnap.data().savedCrops) {
+        const existingCrops = docSnap.data().savedCrops as Crop[];
+        const filteredCrops = existingCrops.filter(crop => crop.id !== cropId && crop.name !== cropId);
+        await setDoc(userDocRef, { savedCrops: filteredCrops }, { merge: true });
+      }
+      
+      console.log(`✅ [CropService] Deletion synced to Firebase successfully.`);
+    } catch (error) {
+      console.warn('⚠️ [CropService] Firebase deletion sync failed:', error);
+      // Deletion is already saved offline with pending sync
+    }
+  } else {
+    console.log('📱 [CropService] Deleted offline (will sync when online)');
   }
-
-  const db = getFirestore();
-  const userDocRef = doc(db, 'users', user.uid);
-
-  console.log(`🗑️ [CropService] Deleting crop recommendation ${cropId} for user ${user.uid}...`);
-  
-  // Get current saved crops
-  const existingCrops = await getSavedCropRecommendations();
-  const filteredCrops = existingCrops.filter(crop => crop.id !== cropId && crop.name !== cropId);
-  
-  await setDoc(userDocRef, { savedCrops: filteredCrops }, { merge: true });
-  console.log(`✅ [CropService] Crop recommendation deleted successfully.`);
 };
 
 // Clear all saved crop recommendations
 export const clearAllSavedCropRecommendations = async (): Promise<void> => {
+  // Clear offline storage first
+  await clearOfflineSavedCrops();
+  
+  // Try to sync with Firebase if online
   const auth = getAuth();
   const user = auth.currentUser;
-  if (!user) {
-    throw new Error("User not authenticated");
+  
+  if (user && await isOnline()) {
+    try {
+      const db = getFirestore();
+      const userDocRef = doc(db, 'users', user.uid);
+
+      console.log(`🗑️ [CropService] Syncing clear all to Firebase...`);
+      await setDoc(userDocRef, { savedCrops: [] }, { merge: true });
+      console.log(`✅ [CropService] Clear all synced to Firebase successfully.`);
+    } catch (error) {
+      console.warn('⚠️ [CropService] Firebase clear sync failed:', error);
+      // Clear is already saved offline with pending sync
+    }
+  } else {
+    console.log('📱 [CropService] Cleared offline (will sync when online)');
   }
+};
 
-  const db = getFirestore();
-  const userDocRef = doc(db, 'users', user.uid);
-
-  console.log(`🗑️ [CropService] Clearing all saved crops for user ${user.uid}...`);
-  await setDoc(userDocRef, { savedCrops: [] }, { merge: true });
-  console.log(`✅ [CropService] All saved crops cleared successfully.`);
+/**
+ * Force sync with Firebase (call when app comes online)
+ */
+export const syncSavedCropsWithFirebase = async (): Promise<void> => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  
+  if (!user || !(await isOnline())) {
+    console.log('⏭️ [CropService] Skipping sync - offline or not authenticated');
+    return;
+  }
+  
+  console.log('🔄 [CropService] Starting Firebase sync...');
+  
+  try {
+    // Process any pending syncs
+    await processPendingSyncs();
+    
+    // Refresh from Firebase
+    await getSavedCropRecommendations();
+    
+    console.log('✅ [CropService] Firebase sync completed');
+  } catch (error) {
+    console.error('❌ [CropService] Sync failed:', error);
+  }
 };

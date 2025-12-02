@@ -4,8 +4,6 @@ import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import PrivacySettingsScreen from '../screens/profile/PrivacySettingsScreen';
 import HelpSupportScreen from '../screens/profile/HelpSupportScreen';
-import SavedRecommendationsScreen from '../screens/profile/SavedRecommendationsScreen';
-import SavedIdentificationsScreen from '../screens/profile/SavedIdentificationsScreen';
 import MySavedItemsScreen from '../screens/profile/MySavedItemsScreen';
 import SavedCropDetailScreen from '../screens/profile/SavedCropDetailScreen';
 import SavedDiseaseDetailScreen from '../screens/profile/SavedDiseaseDetailScreen';
@@ -26,8 +24,6 @@ const ProfileNavigator = () => {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="PrivacySettings" component={PrivacySettingsScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
-      {/* <Stack.Screen name="SavedRecommendations" component={SavedRecommendationsScreen} /> */}
-      {/* <Stack.Screen name="SavedIdentifications" component={SavedIdentificationsScreen} /> */}
       <Stack.Screen name="MySavedItems" component={MySavedItemsScreen} />
       <Stack.Screen name="SavedCropDetail" component={SavedCropDetailScreen} />
       <Stack.Screen name="SavedDiseaseDetail" component={SavedDiseaseDetailScreen} />

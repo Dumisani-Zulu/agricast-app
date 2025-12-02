@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, ImageStyle, StyleProp } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, ImageStyle, StyleProp, Platform } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Network from 'expo-network';
 import { 
   getSavedIdentifications, 
   deleteSavedIdentification, 
@@ -13,9 +14,26 @@ import {
 import { 
   getSavedCropRecommendations, 
   deleteSavedCropRecommendation, 
-  clearAllSavedCropRecommendations 
+  clearAllSavedCropRecommendations,
+  syncSavedCropsWithFirebase
 } from '../../services/cropService';
 import { Crop } from '../../types/crop';
+
+// Cross-platform alert helper
+const showAlert = (title: string, message: string, buttons?: Array<{text: string, onPress?: () => void, style?: string}>) => {
+  if (Platform.OS === 'web') {
+    if (buttons && buttons.length > 1) {
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed && buttons[1]?.onPress) {
+        buttons[1].onPress();
+      }
+    } else {
+      window.alert(`${title}\n\n${message}`);
+    }
+  } else {
+    Alert.alert(title, message, buttons as any);
+  }
+};
 
 // Image component with fallback for missing images
 const ImageWithFallback = ({ uri, style, type }: { uri: string; style?: StyleProp<ImageStyle>; type: 'disease' | 'pest' }) => {
@@ -55,9 +73,22 @@ const MySavedItemsScreen = ({ navigation }: any) => {
   const [crops, setCrops] = useState<Crop[]>([]);
   const [identifications, setIdentifications] = useState<SavedIdentification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  // Check network status
+  const checkNetworkStatus = async () => {
+    try {
+      const networkState = await Network.getNetworkStateAsync();
+      setIsOffline(!(networkState.isConnected && networkState.isInternetReachable));
+    } catch {
+      setIsOffline(true);
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
+    await checkNetworkStatus();
     try {
       const [cropsData, identificationsData] = await Promise.all([
         getSavedCropRecommendations().catch(() => []),
@@ -72,17 +103,46 @@ const MySavedItemsScreen = ({ navigation }: any) => {
     }
   };
 
+  // Manual sync button handler
+  const handleSync = async () => {
+    setSyncing(true);
+    await checkNetworkStatus();
+    
+    if (isOffline) {
+      showAlert('Offline', 'You are currently offline. Please connect to the internet to sync.');
+      setSyncing(false);
+      return;
+    }
+    
+    try {
+      await syncSavedCropsWithFirebase();
+      await loadData();
+      showAlert('Synced', 'Your saved items have been synced successfully.');
+    } catch (error) {
+      console.error('Sync error:', error);
+      showAlert('Sync Failed', 'Could not sync with server. Please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadData();
     }, [])
   );
 
+  // Check network status periodically
+  useEffect(() => {
+    const interval = setInterval(checkNetworkStatus, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   const diseases = identifications.filter(i => i.type === 'disease') as SavedDiseaseIdentification[];
   const pests = identifications.filter(i => i.type === 'pest') as SavedPestIdentification[];
 
   const handleDeleteCrop = (crop: Crop) => {
-    Alert.alert(
+    showAlert(
       'Delete Crop',
       `Remove ${crop.name} from saved crops?`,
       [
@@ -95,7 +155,7 @@ const MySavedItemsScreen = ({ navigation }: any) => {
               await deleteSavedCropRecommendation(crop.id || crop.name);
               await loadData();
             } catch {
-              Alert.alert('Error', 'Failed to delete');
+              showAlert('Error', 'Failed to delete');
             }
           },
         },
@@ -104,7 +164,7 @@ const MySavedItemsScreen = ({ navigation }: any) => {
   };
 
   const handleDeleteIdentification = (id: string, name: string) => {
-    Alert.alert(
+    showAlert(
       'Delete',
       `Remove ${name} from saved items?`,
       [
@@ -117,7 +177,7 @@ const MySavedItemsScreen = ({ navigation }: any) => {
               await deleteSavedIdentification(id);
               await loadData();
             } catch {
-              Alert.alert('Error', 'Failed to delete');
+              showAlert('Error', 'Failed to delete');
             }
           },
         },
@@ -127,7 +187,7 @@ const MySavedItemsScreen = ({ navigation }: any) => {
 
   const handleClearAll = () => {
     const itemType = activeTab === 'crops' ? 'crops' : activeTab === 'diseases' ? 'disease identifications' : 'pest identifications';
-    Alert.alert(
+    showAlert(
       'Clear All',
       `Are you sure you want to delete all saved ${itemType}?`,
       [
@@ -144,7 +204,7 @@ const MySavedItemsScreen = ({ navigation }: any) => {
               }
               await loadData();
             } catch {
-              Alert.alert('Error', 'Failed to clear items');
+              showAlert('Error', 'Failed to clear items');
             }
           },
         },
@@ -333,6 +393,14 @@ const MySavedItemsScreen = ({ navigation }: any) => {
 
   return (
     <View className="flex-1 bg-gray-900">
+      {/* Offline Banner */}
+      {isOffline && (
+        <View className="bg-yellow-600 px-4 py-2 flex-row items-center justify-center">
+          <MaterialCommunityIcons name="cloud-off-outline" size={18} color="white" />
+          <Text className="text-white text-sm font-medium ml-2">Offline Mode - Showing cached data</Text>
+        </View>
+      )}
+      
       {/* Header */}
       <View className="bg-gray-800 px-4 pt-12 pb-4">
         <View className="flex-row items-center justify-between mb-4">
@@ -343,16 +411,35 @@ const MySavedItemsScreen = ({ navigation }: any) => {
             >
               <Ionicons name="arrow-back" size={24} color="white" />
             </TouchableOpacity>
-            <Text className="text-white text-xl font-bold">My Saved Items</Text>
+            <View>
+              <Text className="text-white text-xl font-bold">My Saved Items</Text>
+              <Text className="text-gray-400 text-xs">
+                {isOffline ? '📱 Available offline' : '☁️ Synced with cloud'}
+              </Text>
+            </View>
           </View>
-          {getCurrentItems().length > 0 && (
+          <View className="flex-row items-center">
+            {/* Sync Button */}
             <TouchableOpacity
-              onPress={handleClearAll}
-              className="bg-red-600/20 px-3 py-2 rounded-lg"
+              onPress={handleSync}
+              disabled={syncing}
+              className={`p-2 rounded-lg mr-2 ${syncing ? 'bg-gray-600' : 'bg-blue-600/20'}`}
             >
-              <Text className="text-red-400 font-semibold text-sm">Clear</Text>
+              {syncing ? (
+                <ActivityIndicator size="small" color="#60a5fa" />
+              ) : (
+                <MaterialCommunityIcons name="cloud-sync" size={22} color="#60a5fa" />
+              )}
             </TouchableOpacity>
-          )}
+            {getCurrentItems().length > 0 && (
+              <TouchableOpacity
+                onPress={handleClearAll}
+                className="bg-red-600/20 px-3 py-2 rounded-lg"
+              >
+                <Text className="text-red-400 font-semibold text-sm">Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         {/* Tabs */}
