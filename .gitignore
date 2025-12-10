@@ -10,6 +10,7 @@ npm-debug.*
 *.orig.*
 web-build/
 md
+test-gemini.js
 # Environment variables
 .env
 .env.local
